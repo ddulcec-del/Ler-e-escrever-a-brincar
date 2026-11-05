@@ -1,0 +1,6 @@
+{
+  "name": "Ler e Escrever a Brincar",
+  "description": "Plataforma educativa de intervenção psicopedagógica na leitura, escrita, linguagem e compreensão para o 1.º Ciclo — Agrupamento de Escolas de Paço de Arcos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

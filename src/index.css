@@ -1,0 +1,72 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-display);
+    text-wrap: balance;
+  }
+}
+
+/* Accessibility font family overrides */
+.font-access-default {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+.font-access-arial {
+  font-family: Arial, Helvetica, sans-serif;
+}
+.font-access-verdana {
+  font-family: Verdana, Geneva, sans-serif;
+}
+.font-access-opendyslexic {
+  font-family: 'OpenDyslexic', 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Accessibility font size overrides */
+.text-scale-normal {
+  font-size: 16px;
+}
+.text-scale-large {
+  font-size: 18px;
+}
+.text-scale-xlarge {
+  font-size: 20px;
+}
+
+/* Accessibility spacing overrides */
+.spacing-normal {
+  letter-spacing: 0em;
+  line-height: 1.6;
+}
+.spacing-relaxed {
+  letter-spacing: 0.03em;
+  line-height: 1.85;
+}
+.spacing-wide {
+  letter-spacing: 0.06em;
+  line-height: 2.05;
+}
+
+/* Print styles for Teacher Reports & Digital Certificates */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+  }
+  .print-break-inside-avoid {
+    break-inside: avoid;
+  }
+}
