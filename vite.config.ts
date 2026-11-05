@@ -1,22 +1,17 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig } from 'vite';
 
-export default defineConfig(() => {
-  return {
-    plugins: [react(), tailwindcss()],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
-    },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
-    },
-  };
+// The source page lives in src/index.html. `npm run build` writes the finished
+// site (index.html + assets/) to the repository root, because GitHub Pages is
+// set to publish the root of the main branch as-is.
+export default defineConfig({
+  root: 'src',
+  base: './',
+  publicDir: '../public',
+  plugins: [react(), tailwindcss()],
+  build: {
+    outDir: '..',
+    emptyOutDir: false,
+  },
 });
