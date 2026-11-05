@@ -65,6 +65,9 @@ export const InteractiveActivityModal: React.FC<
   } | null>(null);
   const [isQuestionSolved, setIsQuestionSolved] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  // Bumped on every restart so the question state resets even when
+  // the level and question index stay the same.
+  const [round, setRound] = useState(0);
 
   // State for multiple choice / guided reading
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
@@ -114,13 +117,21 @@ export const InteractiveActivityModal: React.FC<
       setWrittenText(currentQuestion.sentenceStarter || '');
       setCheckedItems({});
     }
-  }, [currentIndex, level, activity.type, currentQuestion]);
+  }, [currentIndex, level, round, activity.type, currentQuestion]);
 
   useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        stopSpeaking();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
     return () => {
+      window.removeEventListener('keydown', onKeyDown);
       stopSpeaking();
     };
-  }, []);
+  }, [onClose]);
 
   const handleSpeak = (text: string) => {
     if (!audioEnabled) return;
@@ -138,6 +149,7 @@ export const InteractiveActivityModal: React.FC<
     setFeedback(null);
     setIsQuestionSolved(false);
     setIsFinished(false);
+    setRound((prev) => prev + 1);
   };
 
   const recordSuccess = () => {
@@ -301,7 +313,8 @@ export const InteractiveActivityModal: React.FC<
     if (!highlightKeywords || !keywords || keywords.length === 0) {
       return text;
     }
-    const regex = new RegExp(`(${keywords.join('|')})`, 'gi');
+    const escaped = keywords.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
     const parts = text.split(regex);
     return parts.map((part, idx) => {
       const isKw = keywords.some(

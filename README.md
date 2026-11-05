@@ -37,14 +37,11 @@ Requer [Node.js](https://nodejs.org) 20 ou superior.
 npm install
 npm run dev      # http://localhost:3000
 npm run lint     # verificação de tipos
-npm run build    # gera o site pronto (index.html + assets/) na raiz
+npm run build    # gera o site pronto na pasta dist/
 ```
 
 ## Publicação
 
-O GitHub Pages publica a raiz do ramo `main` tal como está. Por isso,
-`npm run build` coloca o site pronto (`index.html` + `assets/`) na raiz do
-repositório. O código-fonte da página está em `src/index.html`.
-
-Depois de alterar o código: `npm run build` e enviar (commit/push) também
-`index.html` e `assets/`.
+Cada alteração enviada para o ramo `main` é publicada automaticamente no
+GitHub Pages pelo workflow `.github/workflows/deploy.yml` (o GitHub instala,
+verifica e constrói o site sozinho). Não é preciso enviar ficheiros construídos.

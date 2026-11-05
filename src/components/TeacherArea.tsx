@@ -239,7 +239,8 @@ export const TeacherArea: React.FC<TeacherAreaProps> = ({
     a.href = url;
     a.download = `Relatorio_${activeStudent.name.replace(/\s+/g, '_')}.txt`;
     a.click();
-    URL.revokeObjectURL(url);
+    // Revoking immediately can cancel the download in some browsers.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (

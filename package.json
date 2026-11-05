@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "rm -rf assets && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "clean": "rm -rf assets index.html .nojekyll"
+    "clean": "rm -rf dist"
   },
   "dependencies": {
     "lucide-react": "^0.546.0",

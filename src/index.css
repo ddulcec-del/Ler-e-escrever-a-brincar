@@ -32,17 +32,6 @@
   font-family: 'OpenDyslexic', 'Plus Jakarta Sans', sans-serif;
 }
 
-/* Accessibility font size overrides */
-.text-scale-normal {
-  font-size: 16px;
-}
-.text-scale-large {
-  font-size: 18px;
-}
-.text-scale-xlarge {
-  font-size: 20px;
-}
-
 /* Accessibility spacing overrides */
 .spacing-normal {
   letter-spacing: 0em;

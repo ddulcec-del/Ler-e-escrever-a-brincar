@@ -89,6 +89,12 @@ const DEFAULT_ACCESSIBILITY: AccessibilitySettings = {
   highlightKeywords: true,
 };
 
+const ROOT_FONT_SIZES: Record<AccessibilitySettings['fontSize'], string> = {
+  normal: '100%',
+  large: '112.5%',
+  xlarge: '125%',
+};
+
 const NAV_ITEMS: {
   id: NavSectionId;
   label: string;
@@ -256,6 +262,8 @@ export default function App() {
       'dark',
       accessibility.theme === 'dark'
     );
+    // Tailwind sizes are in rem, so scaling the root font size scales the whole UI.
+    document.documentElement.style.fontSize = ROOT_FONT_SIZES[accessibility.fontSize];
   }, [accessibility]);
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.GREETED, JSON.stringify(hasGreeted));
@@ -366,7 +374,15 @@ export default function App() {
   };
 
   const handleClearAllLocalData = () => {
-    localStorage.clear();
+    if (
+      !window.confirm(
+        'Apagar TODOS os dados guardados neste dispositivo (alunos, resultados, avaliações, planos e sessões)? Esta ação não pode ser desfeita.'
+      )
+    ) {
+      return;
+    }
+    Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+    setAccessibility(DEFAULT_ACCESSIBILITY);
     setStudents([DEFAULT_STUDENT]);
     setActiveStudentId(DEFAULT_STUDENT.id);
     setResults([]);
@@ -381,7 +397,6 @@ export default function App() {
   );
 
   const fontClass = `font-access-${accessibility.fontFamily}`;
-  const sizeClass = `text-scale-${accessibility.fontSize}`;
   const spacingClass = `spacing-${accessibility.spacing}`;
 
   const isMonthSection = (id: NavSectionId): id is MonthId =>
@@ -389,7 +404,7 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 ${fontClass} ${sizeClass} ${spacingClass}`}
+      className={`min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 ${fontClass} ${spacingClass}`}
     >
       {/* Top Bar Contract (1-row, 3-zone) */}
       <header className="no-print sticky top-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xs border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-3.5">
@@ -1088,9 +1103,22 @@ export default function App() {
                 )
               }
               onDeleteStudent={(id) => {
+                const target = students.find((s) => s.id === id);
                 const remaining = students.filter((s) => s.id !== id);
+                if (!target || remaining.length === 0) return;
+                if (
+                  !window.confirm(
+                    `Remover o perfil de ${target.name} e todos os seus registos? Esta ação não pode ser desfeita.`
+                  )
+                ) {
+                  return;
+                }
                 setStudents(remaining);
-                if (activeStudentId === id && remaining[0]) {
+                setResults((prev) => prev.filter((r) => r.studentId !== id));
+                setAssessments(({ [id]: _a, ...rest }) => rest);
+                setPlans(({ [id]: _p, ...rest }) => rest);
+                setSessions((prev) => prev.filter((x) => x.studentId !== id));
+                if (activeStudentId === id) {
                   setActiveStudentId(remaining[0].id);
                 }
               }}
