@@ -11,20 +11,37 @@ import {
   POSITIVE_FEEDBACK,
   TRY_AGAIN_FEEDBACK,
 } from '../data/curriculumData';
-import { InteractiveStory } from '../types/pedagogical';
+import {
+  ActivityResult,
+  InteractiveStory,
+  StudentProfile,
+} from '../types/pedagogical';
 import { speakPt, stopSpeaking } from '../utils/speech';
 import { monthName } from '../utils/months';
+import { STORY_RESULT_PREFIX, formatDate } from '../utils/progress';
 import { AnswerOption, StepBoxes } from './AnswerOption';
+import { ProfilePicker } from './ProfilePicker';
 import { Doodle } from './Sketch';
 
 interface InteractiveStoriesViewProps {
   audioEnabled: boolean;
   highlightKeywords: boolean;
+  student?: StudentProfile;
+  students: StudentProfile[];
+  results: ActivityResult[];
+  onPickStudent: (id: string) => void;
+  /** Saves the handed-in story; rejects if it couldn't be saved. */
+  onSubmit: (result: Omit<ActivityResult, 'id' | 'date'>) => Promise<void>;
 }
 
 export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
   audioEnabled,
   highlightKeywords,
+  student,
+  students,
+  results,
+  onPickStudent,
+  onSubmit,
 }) => {
   const [selectedStory, setSelectedStory] = useState<InteractiveStory>(
     INTERACTIVE_STORIES[0]
@@ -35,6 +52,12 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [showHints, setShowHints] = useState<Record<number, boolean>>({});
   const [retellNotes, setRetellNotes] = useState('');
+  // What the teacher gets with the story: how many tries and hints it took.
+  const [tries, setTries] = useState(0);
+  const [hintsOpened, setHintsOpened] = useState<Set<number>>(new Set());
+  const [submitState, setSubmitState] = useState<
+    'idle' | 'sending' | 'sent' | 'error'
+  >('idle');
 
   const handleSelectStory = (story: InteractiveStory) => {
     stopSpeaking();
@@ -43,6 +66,9 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
     setAnswers({});
     setShowHints({});
     setRetellNotes('');
+    setTries(0);
+    setHintsOpened(new Set());
+    setSubmitState('idle');
   };
 
   const handleReadParagraph = (idx: number, text: string) => {
@@ -81,6 +107,36 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
   const questions = selectedStory.comprehensionQuestions;
   const isRight = (i: number) => answers[i] === questions[i].correctAnswer;
   const rightCount = questions.filter((_, i) => isRight(i)).length;
+  const allRight = rightCount === questions.length;
+  const storyResultId = `${STORY_RESULT_PREFIX}${selectedStory.id}`;
+  const lastHandIn = results.find((r) => r.activityId === storyResultId);
+
+  const handleSubmit = async () => {
+    if (!student || !allRight) return;
+    setSubmitState('sending');
+    const hints = hintsOpened.size;
+    try {
+      await onSubmit({
+        studentId: student.id,
+        activityId: storyResultId,
+        activityTitle: `História: ${selectedStory.title}`,
+        month: selectedStory.month,
+        competency: 'compreensao_textos',
+        difficultyLevel: selectedStory.level,
+        attempts: Math.max(tries, questions.length),
+        correctCount: questions.length,
+        totalCount: questions.length,
+        hintsUsed: hints,
+        autonomyDegree:
+          hints === 0 ? 'Autónomo' : hints <= 2 ? 'Com apoio parcial' : 'Com apoio total',
+        notes: retellNotes.trim() || undefined,
+      });
+      setSubmitState('sent');
+      if (audioEnabled) speakPt('Muito bem! Entregaste a tua história.');
+    } catch {
+      setSubmitState('error');
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-3xl">
@@ -241,9 +297,11 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
                         : 'wrong'
                     }
                     faded={solved && opt !== q.correctAnswer}
-                    onClick={() =>
-                      setAnswers((prev) => ({ ...prev, [qIdx]: opt }))
-                    }
+                    onClick={() => {
+                      if (solved) return;
+                      setTries((t) => t + 1);
+                      setAnswers((prev) => ({ ...prev, [qIdx]: opt }));
+                    }}
                   />
                 ))}
               </div>
@@ -280,12 +338,13 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
                 {!solved && (
                   <button
                     type="button"
-                    onClick={() =>
+                    onClick={() => {
+                      setHintsOpened((prev) => new Set(prev).add(qIdx));
                       setShowHints((prev) => ({
                         ...prev,
                         [qIdx]: !prev[qIdx],
-                      }))
-                    }
+                      }));
+                    }}
                     aria-expanded={!!showHints[qIdx]}
                     className="btn btn-paper btn-sm"
                   >
@@ -344,6 +403,51 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
             className="ruled-paper block w-full rounded-[3px] border-2 border-ink bg-sheet text-ink px-4 py-0 text-xl font-medium placeholder:text-ink-soft/70 focus:outline-none focus:border-pen"
           />
         </div>
+      </section>
+
+      {/* 5 — Hand in to the teacher */}
+      <section className="sketch p-5 sm:p-6 space-y-4">
+        <div className="hand text-3xl font-bold text-ink">Entregar à professora</div>
+
+        {!student ? (
+          <ProfilePicker
+            students={students}
+            onPick={onPickStudent}
+            title="Quem leu esta história?"
+          />
+        ) : submitState === 'sent' ? (
+          <div role="status" className="flex items-center gap-3">
+            <Doodle name="tick" className="w-9 h-9 shrink-0 text-good" strokeWidth={5} />
+            <p className="text-lg font-semibold text-ink">
+              Entregue, {student.name}! A professora já pode ver as tuas
+              respostas e o teu reconto. Ganhaste 20 pontos.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-base text-ink-soft">
+              {allRight
+                ? 'Respondeste a todas as perguntas. Escreve o teu reconto (se quiseres) e entrega.'
+                : `Responde certo às ${questions.length} perguntas para poderes entregar (${rightCount} de ${questions.length}).`}
+              {lastHandIn && ` Já entregaste esta história a ${formatDate(lastHandIn.date)}.`}
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!allRight || submitState === 'sending'}
+                className="btn btn-pen"
+              >
+                {submitState === 'sending' ? 'A entregar…' : 'Entregar história'}
+              </button>
+              {submitState === 'error' && (
+                <span role="alert" className="text-sm font-semibold text-mark">
+                  Não foi possível entregar. Tenta outra vez.
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

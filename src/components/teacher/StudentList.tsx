@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus } from 'lucide-react';
+import { ArrowRight, UserPlus } from 'lucide-react';
 import { INTERVENTION_PROFILES } from '../../data/curriculumData';
 import * as db from '../../lib/db';
 import type {
@@ -61,7 +61,8 @@ export const StudentList: React.FC<StudentListProps> = ({
               <button
                 type="button"
                 onClick={() => onOpen(s.id)}
-                className="sketch sketch-shade w-full text-left p-5 space-y-3"
+                aria-label={`Abrir ${s.name}`}
+                className="group sketch sketch-shade w-full text-left p-5 space-y-3 transition-transform duration-150 hover:-translate-y-1 hover:[--sketch-fill:color-mix(in_srgb,var(--color-pencil)_22%,var(--color-sheet))] focus-visible:-translate-y-1"
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="hand text-4xl font-bold text-pen leading-none">
@@ -98,6 +99,10 @@ export const StudentList: React.FC<StudentListProps> = ({
                     ? `Última atividade: ${last.activityTitle} (${formatDate(last.date)})`
                     : 'Ainda sem atividades.'}
                 </p>
+                <span className="flex items-center gap-1 text-sm font-bold text-pen group-hover:underline underline-offset-4">
+                  Abrir ficha
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </span>
               </button>
             </li>
           );

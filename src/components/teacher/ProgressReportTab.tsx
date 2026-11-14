@@ -142,7 +142,15 @@ export const ProgressReportTab: React.FC<ProgressReportTabProps> = ({
                       <td className="py-2 pr-4 tabular-nums whitespace-nowrap">
                         {formatDate(r.date)}
                       </td>
-                      <td className="py-2 pr-4 font-semibold">{r.activityTitle}</td>
+                      <td className="py-2 pr-4">
+                        <span className="font-semibold">{r.activityTitle}</span>
+                        {r.notes && (
+                          <p className="mt-1 text-ink-soft whitespace-pre-line">
+                            <span className="font-bold text-ink">Reconto: </span>
+                            {r.notes}
+                          </p>
+                        )}
+                      </td>
                       <td className="py-2 pr-4">{monthName(r.month)}</td>
                       <td className="py-2 pr-4 tabular-nums">{r.difficultyLevel}</td>
                       <td className="py-2 pr-4 tabular-nums">

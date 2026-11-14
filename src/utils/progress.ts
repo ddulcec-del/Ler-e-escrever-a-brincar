@@ -6,6 +6,11 @@ import type { ActivityResult } from '../types/pedagogical';
  */
 export const POINTS_PER_ACTIVITY = 20;
 
+/** Interactive stories handed in are recorded as results with this prefix. */
+export const STORY_RESULT_PREFIX = 'historia:';
+export const isStoryResult = (r: ActivityResult) =>
+  r.activityId.startsWith(STORY_RESULT_PREFIX);
+
 export function computePoints(results: ActivityResult[]): number {
   return results.length * POINTS_PER_ACTIVITY;
 }
@@ -23,7 +28,11 @@ export function computeMedals(results: ActivityResult[]): string[] {
   ) {
     medals.push('detetive-atento');
   }
-  if (results.some((r) => r.competency === 'organizacao_discurso')) {
+  if (
+    results.some(
+      (r) => r.competency === 'organizacao_discurso' || isStoryResult(r)
+    )
+  ) {
     medals.push('contador-historias');
   }
   if (results.some((r) => r.competency === 'producao_escrita')) {

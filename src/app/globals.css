@@ -100,6 +100,19 @@
   outline-offset: 2px;
 }
 
+/* Tailwind v4 no longer gives buttons the pointer cursor: bring it back so
+   everything clickable looks clickable. */
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+summary,
+label:has(> input[type='checkbox']),
+label:has(> input[type='radio']) {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
 /* Squared-paper background (papel quadriculado) that fades out downwards */
 .grid-paper {
   background-image:

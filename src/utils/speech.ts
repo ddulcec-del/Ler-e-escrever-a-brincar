@@ -2,10 +2,36 @@ export function isSpeechSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
+// Keep a reference to the utterance being spoken: if it is garbage-collected
+// mid-sentence, Chrome stops firing its events (and may cut the audio).
+let current: SpeechSynthesisUtterance | null = null;
+let pending: ReturnType<typeof setTimeout> | null = null;
+
 export function stopSpeaking(): void {
-  if (isSpeechSupported()) {
-    window.speechSynthesis.cancel();
+  if (!isSpeechSupported()) return;
+  if (pending) {
+    clearTimeout(pending);
+    pending = null;
   }
+  current = null;
+  window.speechSynthesis.cancel();
+}
+
+function pickVoice(): SpeechSynthesisVoice | undefined {
+  const voices = window.speechSynthesis.getVoices();
+  return (
+    voices.find((v) => v.lang.toLowerCase() === 'pt-pt') ||
+    voices.find((v) => v.lang.toLowerCase().replace('_', '-') === 'pt-pt') ||
+    voices.find((v) => v.lang.toLowerCase().startsWith('pt'))
+  );
+}
+
+// Voices load asynchronously in Chrome; asking once warms the list up.
+if (isSpeechSupported()) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.addEventListener?.('voiceschanged', () => {
+    window.speechSynthesis.getVoices();
+  });
 }
 
 export function speakPt(
@@ -21,36 +47,38 @@ export function speakPt(
     options?.onEnd?.();
     return;
   }
-
-  window.speechSynthesis.cancel();
+  const synth = window.speechSynthesis;
+  const wasBusy = synth.speaking || synth.pending;
+  stopSpeaking();
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'pt-PT';
   utterance.rate = options?.rate ?? 0.92;
   utterance.pitch = 1.02;
+  const voice = pickVoice();
+  if (voice) utterance.voice = voice;
 
-  const voices = window.speechSynthesis.getVoices();
-  const ptPtVoice =
-    voices.find((v) => v.lang.toLowerCase() === 'pt-pt') ||
-    voices.find((v) => v.lang.toLowerCase().startsWith('pt'));
-  if (ptPtVoice) {
-    utterance.voice = ptPtVoice;
-  }
-
-  utterance.onstart = () => {
-    options?.onStart?.();
-  };
-  utterance.onend = () => {
+  const finish = () => {
+    if (current === utterance) current = null;
     options?.onEnd?.();
   };
-  utterance.onerror = () => {
-    options?.onEnd?.();
-  };
+  utterance.onstart = () => options?.onStart?.();
+  utterance.onend = finish;
+  utterance.onerror = finish;
   if (options?.onBoundary) {
-    utterance.onboundary = (event) => {
-      options.onBoundary?.(event.charIndex);
-    };
+    utterance.onboundary = (event) => options.onBoundary?.(event.charIndex);
   }
 
-  window.speechSynthesis.speak(utterance);
+  const start = () => {
+    pending = null;
+    current = utterance;
+    // Chrome can be left "paused" (e.g. after the tab was in the background),
+    // which silently queues everything; resuming first unsticks it.
+    synth.resume();
+    synth.speak(utterance);
+  };
+  // Speaking right after cancel() is sometimes dropped by Chrome; give the
+  // engine a moment when something was playing.
+  if (wasBusy) pending = setTimeout(start, 80);
+  else start();
 }

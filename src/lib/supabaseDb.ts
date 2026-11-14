@@ -428,6 +428,7 @@ const toResult = (r: Row): ActivityResult => ({
   totalCount: r.total_count as number,
   hintsUsed: r.hints_used as number,
   autonomyDegree: r.autonomy_degree as ActivityResult['autonomyDegree'],
+  notes: (r.notes as string | null) || undefined,
 });
 
 /** Results of one student, or of everyone when no id is given. */
@@ -456,6 +457,7 @@ export async function addResult(
         total_count: r.totalCount,
         hints_used: r.hintsUsed,
         autonomy_degree: r.autonomyDegree,
+        notes: r.notes?.trim() || null,
       })
       .select()
       .single()

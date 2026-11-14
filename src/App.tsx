@@ -814,6 +814,14 @@ export default function App() {
             <InteractiveStoriesView
               audioEnabled={accessibility.audioEnabled}
               highlightKeywords={accessibility.highlightKeywords}
+              student={activeStudent}
+              students={students}
+              results={studentResults}
+              onPickStudent={handlePickStudent}
+              onSubmit={async (res) => {
+                const saved = await db.addResult(res);
+                setStudentResults((prev) => [saved, ...prev]);
+              }}
             />
           )}
 

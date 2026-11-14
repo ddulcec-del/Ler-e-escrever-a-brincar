@@ -129,11 +129,16 @@ export const InteractiveActivityModal: React.FC<
     }
   }, [currentIndex, level, round, activity.type, currentQuestion]);
 
+  // Parents pass a new onClose on every render; keep the latest in a ref so
+  // the effect below runs once and doesn't cut the voice on each re-render.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         stopSpeaking();
-        onClose();
+        onCloseRef.current();
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -141,7 +146,7 @@ export const InteractiveActivityModal: React.FC<
       window.removeEventListener('keydown', onKeyDown);
       stopSpeaking();
     };
-  }, [onClose]);
+  }, []);
 
   const handleSpeak = (text: string) => {
     if (!audioEnabled) return;
