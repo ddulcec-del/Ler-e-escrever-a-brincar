@@ -1,10 +1,46 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ------------------------------------------------------------------
+   Design tokens — "caderno e lápis" (notebook and pencil)
+   paper / sheet: page and card surfaces · ink: graphite text and lines
+   pen: ballpoint blue (actions) · pencil: yellow highlighter
+   eraser: pink · mark: teacher's red pen · rule: notebook ruling
+   ------------------------------------------------------------------ */
+@theme {
+  --color-paper: #faf6ec;
+  --color-sheet: #fffdf8;
+  --color-ink: #23201c;
+  --color-ink-soft: #5d564b;
+  --color-pen: #2b37b3;
+  --color-pen-deep: #1f2874;
+  --color-pencil: #f6c445;
+  --color-eraser: #f0958a;
+  --color-mark: #cf3f2e;
+  --color-good: #2c7a4b;
+  --color-rule: #b9c3ee;
+  --color-edge: #d9d0bb;
+  --font-hand: 'Caveat', 'Segoe Print', 'Bradley Hand', cursive;
+}
+
+.dark {
+  --color-paper: #171512;
+  --color-sheet: #201e1a;
+  --color-ink: #f3eddd;
+  --color-ink-soft: #b3aa98;
+  --color-pen: #a9b4ff;
+  --color-pen-deep: #c9d0ff;
+  --color-rule: #3a4170;
+  --color-edge: #3b372f;
+  --color-mark: #ff8672;
+  --color-good: #7fd6a0;
+}
+
 @layer base {
   :root {
-    --font-display: 'Outfit', system-ui, -apple-system, sans-serif;
-    --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    --font-display: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif;
+    --font-body: 'Atkinson Hyperlegible Next', system-ui, -apple-system, sans-serif;
+    --font-sans: var(--font-body);
     --font-mono: 'JetBrains Mono', monospace;
   }
 
@@ -18,9 +54,335 @@
   }
 }
 
+/* ------------------------------------------------------------------
+   .skin — the app shell and the exercise window.
+   Re-maps the neutral and brand scales the views already use, so every
+   screen shares the warm paper / graphite / blue-pen palette.
+   ------------------------------------------------------------------ */
+.skin {
+  --color-slate-50: #faf6ec;
+  --color-slate-100: #f2ecdd;
+  --color-slate-200: #e0d8c5;
+  --color-slate-300: #c6bda8;
+  --color-slate-400: #978f7f;
+  --color-slate-500: #6f685c;
+  --color-slate-600: #544e45;
+  --color-slate-700: #3e3933;
+  --color-slate-800: #2b2824;
+  --color-slate-900: #1f1d19;
+  --color-slate-950: #151310;
+
+  --color-teal-50: #eef1ff;
+  --color-teal-100: #e0e5ff;
+  --color-teal-200: #c5cdff;
+  --color-teal-300: #a3aeff;
+  --color-teal-400: #7b88f5;
+  --color-teal-500: #5362e6;
+  --color-teal-600: #3b49d0;
+  --color-teal-700: #2b37b3;
+  --color-teal-800: #232d8f;
+  --color-teal-900: #1f2874;
+  --color-teal-950: #131845;
+
+  color: var(--color-ink);
+}
+
+.font-access-default .skin {
+  font-family: var(--font-body);
+}
+
+.skin h1, .skin h2, .skin h3, .skin h4 {
+  letter-spacing: -0.015em;
+}
+
+.skin :focus-visible {
+  outline: 2.5px solid var(--color-pen);
+  outline-offset: 2px;
+}
+
+/* Squared-paper background (papel quadriculado) that fades out downwards */
+.grid-paper {
+  background-image:
+    linear-gradient(to bottom, transparent 55%, var(--color-paper)),
+    linear-gradient(var(--color-edge) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-edge) 1px, transparent 1px);
+  background-size: 100% 100%, 1.75rem 1.75rem, 1.75rem 1.75rem;
+  background-position: 0 0, -1px -1px, -1px -1px;
+}
+
+@layer components {
+  /* A sheet of paper: square corners, thin pencil-grey edge */
+  .sheet {
+    border-radius: 3px;
+    box-shadow: 3px 3px 0 0 color-mix(in srgb, var(--color-ink) 9%, transparent);
+  }
+
+  /* Hand-drawn outline: the border lives on a pseudo-element so the
+     wobble filter (see SketchDefs) bends the line but not the content. */
+  .sketch {
+    position: relative;
+    isolation: isolate;
+  }
+  .sketch::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--sketch-fill, var(--color-sheet));
+    border: 2px solid var(--color-ink);
+    border-radius: 2px;
+    pointer-events: none;
+  }
+  /* Pencil-hatched shadow, offset like a quick shading stroke */
+  .sketch-shade::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    transform: translate(7px, 8px);
+    background: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--color-ink) 55%, transparent) 0 1.2px,
+      transparent 1.2px 6px
+    );
+    pointer-events: none;
+    transition: transform 0.18s ease;
+  }
+  button.sketch-shade:hover::after,
+  a.sketch-shade:hover::after {
+    transform: translate(3px, 4px);
+  }
+
+  /* Highlighter swipe behind a word */
+  .hl {
+    background-image: linear-gradient(
+      100deg,
+      transparent 0.15em,
+      color-mix(in srgb, var(--color-pencil) 85%, transparent) 0.35em,
+      color-mix(in srgb, var(--color-pencil) 85%, transparent) calc(100% - 0.3em),
+      transparent calc(100% - 0.1em)
+    );
+    background-repeat: no-repeat;
+    background-size: 100% 46%;
+    background-position: 0 82%;
+    padding-inline: 0.12em;
+    margin-inline: -0.12em;
+  }
+  .dark .hl {
+    background-image: linear-gradient(
+      100deg,
+      transparent 0.15em,
+      rgb(246 196 69 / 0.34) 0.35em,
+      rgb(246 196 69 / 0.34) calc(100% - 0.3em),
+      transparent calc(100% - 0.1em)
+    );
+  }
+
+  .hand {
+    font-family: var(--font-hand);
+    letter-spacing: 0;
+    line-height: 1.1;
+  }
+
+  /* Small label, set like the printed heading of a school form */
+  .label-print {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--color-ink-soft);
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0.7rem 1.15rem;
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    border: 1.6px solid var(--color-ink);
+    border-radius: 2px;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+    box-shadow: 3px 3px 0 0 var(--color-ink);
+  }
+  .btn:hover {
+    transform: translate(1px, 1px);
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+  }
+  .btn:active {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 0 var(--color-ink);
+  }
+  .btn-pen {
+    background: #2b37b3;
+    color: #fffdf8;
+  }
+  .btn-pencil {
+    background: var(--color-pencil);
+    color: #23201c;
+  }
+  .btn-paper {
+    background: var(--color-sheet);
+    color: var(--color-ink);
+  }
+  .btn-sm {
+    padding: 0.45rem 0.8rem;
+    font-size: 0.82rem;
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+  }
+
+  /* "Listen" button: always the same blue speaker tile, so a child learns
+     to spot it anywhere in the app. */
+  .btn-listen {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.28rem 0.9rem 0.28rem 0.28rem;
+    border: 2px solid var(--color-ink);
+    border-radius: 2px;
+    background: var(--color-sheet);
+    color: var(--color-ink);
+    font-weight: 700;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    box-shadow: 2px 2px 0 0 var(--color-ink);
+    transition: background-color 0.12s ease, transform 0.12s ease, box-shadow 0.12s ease;
+  }
+  .btn-listen > svg:first-child {
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0.4rem;
+    flex-shrink: 0;
+    background: #2b37b3;
+    color: #fffdf8;
+    border-radius: 2px;
+    stroke-width: 2.4;
+    transition: transform 0.15s ease;
+  }
+  .btn-listen:hover {
+    background: color-mix(in srgb, var(--color-pencil) 45%, var(--color-sheet));
+  }
+  .btn-listen:hover > svg:first-child {
+    transform: scale(1.08) rotate(-4deg);
+  }
+  .btn-listen:active {
+    transform: translate(2px, 2px);
+    box-shadow: 0 0 0 0 var(--color-ink);
+  }
+  .btn-listen.is-playing > svg:first-child {
+    background: #cf3f2e;
+  }
+
+  /* Double ruling used for handwriting practice (linhas de caligrafia) */
+  .ruled-input {
+    background: linear-gradient(var(--color-rule), var(--color-rule)) no-repeat 0 0.3rem / 100% 1.2px;
+    border: 0;
+    border-bottom: 1.6px solid var(--color-pen);
+    border-radius: 0;
+    font-family: var(--font-hand);
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--color-pen);
+    padding: 0.1rem 0.25rem 0.05rem;
+    min-width: 0;
+  }
+  .ruled-input::placeholder {
+    color: color-mix(in srgb, var(--color-ink-soft) 55%, transparent);
+    font-weight: 500;
+  }
+  .ruled-input:focus {
+    outline: none;
+    border-bottom-color: var(--color-mark);
+  }
+}
+
+/* Handwriting paper: the text sits on ruled lines, whatever its length */
+.ruled-paper {
+  line-height: 2.6rem;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(2.6rem - 1.5px),
+    var(--color-rule) calc(2.6rem - 1.5px),
+    var(--color-rule) 2.6rem
+  );
+  background-attachment: local;
+}
+
+/* Key word painted with the highlighter */
+mark.kw {
+  background: var(--color-pencil);
+  color: #23201c;
+  font-weight: 700;
+  padding: 0.05em 0.25em;
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+/* Scrolls without a visible scrollbar; the bottom fades out to show
+   that there is more below. */
+.quiet-scroll {
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 3rem), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 3rem), transparent);
+}
+.quiet-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Short pencil flourish under the page titles of the inner views */
+.skin main h1::after {
+  content: '';
+  display: block;
+  width: 6.5rem;
+  height: 0.6rem;
+  margin-top: 0.35rem;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 104 10' fill='none'%3E%3Cpath d='M2 6.2C14 2.2 22 8.6 34 5.2S56 2 68 5.6s22 2.6 34-1.4' stroke='%23f6c445' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat left center / contain;
+}
+.skin main h1.no-flourish::after {
+  content: none;
+}
+
+/* Line-drawing animations */
+@keyframes draw-line {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+@keyframes pencil-travel {
+  from { offset-distance: 0%; }
+  to { offset-distance: 100%; }
+}
+@keyframes pencil-rest {
+  to { transform: translate(14px, -18px) rotate(6deg); }
+}
+.draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw-line var(--draw-time, 1s) var(--draw-ease, ease-out) var(--draw-delay, 0s) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .draw {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .pencil-runner {
+    animation: none !important;
+    offset-distance: 100% !important;
+  }
+  .btn, .sketch-shade::after {
+    transition: none;
+  }
+}
+
 /* Accessibility font family overrides */
 .font-access-default {
-  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 .font-access-arial {
   font-family: Arial, Helvetica, sans-serif;
@@ -29,7 +391,7 @@
   font-family: Verdana, Geneva, sans-serif;
 }
 .font-access-opendyslexic {
-  font-family: 'OpenDyslexic', 'Plus Jakarta Sans', sans-serif;
+  font-family: 'OpenDyslexic', var(--font-body);
 }
 
 /* Accessibility spacing overrides */

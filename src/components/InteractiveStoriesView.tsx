@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import {
-  BookOpen,
-  CheckCircle2,
   HelpCircle,
-  MessageSquare,
+  Lightbulb,
+  RotateCcw,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -14,6 +13,9 @@ import {
 } from '../data/curriculumData';
 import { InteractiveStory } from '../types/pedagogical';
 import { speakPt, stopSpeaking } from '../utils/speech';
+import { monthName } from '../utils/months';
+import { AnswerOption, StepBoxes } from './AnswerOption';
+import { Doodle } from './Sketch';
 
 interface InteractiveStoriesViewProps {
   audioEnabled: boolean;
@@ -66,7 +68,7 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
       return isKw ? (
         <mark
           key={idx}
-          className="bg-amber-200/80 dark:bg-amber-700/60 text-slate-900 dark:text-amber-50 px-1 rounded font-semibold"
+          className="kw"
         >
           {part}
         </mark>
@@ -76,91 +78,108 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
     });
   };
 
+  const questions = selectedStory.comprehensionQuestions;
+  const isRight = (i: number) => answers[i] === questions[i].correctAnswer;
+  const rightCount = questions.filter((_, i) => isRight(i)).length;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-3xl">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-ink">
           Histórias interativas
         </h1>
-        <p className="text-slate-600 dark:text-slate-300 mt-1">
+        <p className="text-lg text-ink-soft mt-3">
           Lê ou ouve cada história com atenção, explora as palavras-chave e
           responde às perguntas de compreensão.
         </p>
       </div>
 
-      {/* Story Selector Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {INTERACTIVE_STORIES.map((story) => {
-          const active = selectedStory.id === story.id;
-          return (
-            <button
-              key={story.id}
-              type="button"
-              onClick={() => handleSelectStory(story)}
-              className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
-                active
-                  ? 'bg-teal-700 text-white border-teal-700'
-                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-800 hover:border-teal-500'
-              }`}
-            >
-              {story.title}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Story Reader & Comprehension */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Story Text */}
-        <div className="lg:col-span-7 p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-6">
-          <div className="flex items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
-            <div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2">
-                <span className="capitalize font-medium text-teal-700 dark:text-teal-400">
-                  {selectedStory.month}
+      {/* 1 — Choose a story */}
+      <section className="space-y-3">
+        <div className="hand text-3xl font-bold text-ink">
+          Escolhe uma história
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {INTERACTIVE_STORIES.map((story) => {
+            const active = selectedStory.id === story.id;
+            return (
+              <button
+                key={story.id}
+                type="button"
+                onClick={() => handleSelectStory(story)}
+                aria-pressed={active}
+                className={`text-left flex items-center gap-3.5 px-4 py-3 border-2 border-ink rounded-[3px] transition-colors ${
+                  active
+                    ? 'bg-pencil text-[#23201c] shadow-[3px_3px_0_0_var(--color-ink)]'
+                    : 'bg-sheet text-ink hover:bg-pencil/30'
+                }`}
+              >
+                <Doodle name="book" className="w-10 h-10 shrink-0" />
+                <span>
+                  <span className="font-display block text-lg font-bold leading-snug">
+                    {story.title}
+                  </span>
+                  <span className="block text-sm opacity-75">
+                    {monthName(story.month)} · Nível {story.level} · {story.readingTime}
+                  </span>
                 </span>
-                <span aria-hidden="true">·</span>
-                <span>Nível {selectedStory.level}</span>
-                <span aria-hidden="true">·</span>
-                <span>{selectedStory.readingTime}</span>
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">
-                {selectedStory.title}
-              </h2>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* 2 — Read */}
+      <section className="relative bg-sheet border-2 border-ink rounded-[3px] shadow-[5px_5px_0_0_color-mix(in_srgb,var(--color-ink)_18%,transparent)]">
+        <span
+          aria-hidden="true"
+          className="absolute left-7 sm:left-12 top-0 bottom-0 w-px bg-mark/60"
+        />
+        <div className="pl-10 sm:pl-16 pr-5 sm:pr-8 pt-6 pb-7">
+          <div className="border-b-2 border-rule pb-4 mb-2">
+            <div className="label-print">
+              {monthName(selectedStory.month)} · Nível {selectedStory.level} ·{' '}
+              {selectedStory.readingTime} de leitura
             </div>
-            <BookOpen className="w-7 h-7 text-teal-700 dark:text-teal-400 shrink-0" />
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-ink mt-1.5 leading-tight">
+              {selectedStory.title}
+            </h2>
           </div>
 
-          <div className="space-y-4">
+          <div>
             {selectedStory.paragraphs.map((para, idx) => {
               const isReading = readingParagraphIdx === idx;
               return (
                 <div
                   key={idx}
-                  className={`p-4 rounded-xl border transition-colors ${
-                    isReading
-                      ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 dark:border-sky-700'
-                      : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800'
+                  className={`relative py-4 border-b border-dashed border-ink/25 last:border-b-0 last:pb-0 transition-colors ${
+                    isReading ? 'bg-pencil/25 -mx-3 px-3' : ''
                   }`}
                 >
-                  <p className="text-base sm:text-lg leading-relaxed text-slate-800 dark:text-slate-100">
+                  <span
+                    aria-hidden="true"
+                    className="hand absolute -left-8 sm:-left-12 top-4 w-7 sm:w-9 text-center text-3xl sm:text-4xl font-bold text-pen leading-none"
+                  >
+                    {idx + 1}
+                  </span>
+                  <p className="text-xl sm:text-[1.35rem] leading-[1.9] font-medium text-ink">
                     {renderHighlighted(para.text, para.keywords)}
                   </p>
                   {audioEnabled && (
                     <button
                       type="button"
                       onClick={() => handleReadParagraph(idx, para.text)}
-                      className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-medium text-teal-700 dark:text-teal-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                      className={`btn-listen mt-3 ${isReading ? 'is-playing' : ''}`}
                     >
                       {isReading ? (
                         <>
-                          <VolumeX className="w-3.5 h-3.5" />
+                          <VolumeX />
                           <span>Parar leitura</span>
                         </>
                       ) : (
                         <>
-                          <Volume2 className="w-3.5 h-3.5" />
-                          <span>Ouvir parágrafo</span>
+                          <Volume2 />
+                          <span>Ouvir parágrafo {idx + 1}</span>
                         </>
                       )}
                     </button>
@@ -170,70 +189,95 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
             })}
           </div>
         </div>
+      </section>
 
-        {/* Comprehension & Retelling */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-5">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              Compreensão da história
-            </h3>
+      {/* 3 — Answer */}
+      <section className="space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-3 border-b-[3px] border-pen pb-2">
+          <div>
+            <div className="hand text-3xl font-bold text-ink">
+              Perguntas sobre a história
+            </div>
+            <p className="text-base text-ink-soft">
+              Podes voltar a ler o texto sempre que precisares.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="label-print tabular-nums">
+              {rightCount} de {questions.length} certas
+            </span>
+            <StepBoxes total={questions.length} isDone={isRight} />
+          </div>
+        </div>
 
-            {selectedStory.comprehensionQuestions.map((q, qIdx) => {
-              const chosen = answers[qIdx];
-              const isCorrect = chosen === q.correctAnswer;
-              return (
-                <div
-                  key={qIdx}
-                  className="space-y-2.5 pb-4 border-b border-slate-100 dark:border-slate-800 last:border-0 last:pb-0"
+        {questions.map((q, qIdx) => {
+          const chosen = answers[qIdx];
+          const solved = isRight(qIdx);
+          return (
+            <div key={qIdx} className="space-y-3">
+              <div className="flex items-start gap-3">
+                <span
+                  aria-hidden="true"
+                  className="hand text-4xl font-bold text-pen leading-none w-8 shrink-0"
                 >
-                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                    {qIdx + 1}. {q.question}
-                  </p>
-                  <div className="space-y-2">
-                    {q.options.map((opt) => {
-                      const active = chosen === opt;
-                      return (
-                        <button
-                          key={opt}
-                          type="button"
-                          onClick={() =>
-                            setAnswers((prev) => ({ ...prev, [qIdx]: opt }))
-                          }
-                          className={`w-full text-left px-3.5 py-2.5 rounded-xl border text-xs sm:text-sm font-medium transition-colors ${
-                            active && isCorrect
-                              ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-500 text-emerald-900 dark:text-emerald-200'
-                              : active && !isCorrect
-                              ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 text-amber-900 dark:text-amber-200'
-                              : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-teal-500'
-                          }`}
-                        >
-                          {opt}
-                        </button>
-                      );
-                    })}
-                  </div>
+                  {qIdx + 1}.
+                </span>
+                <h3 className="text-xl font-bold text-ink leading-snug pt-0.5">
+                  {q.question}
+                </h3>
+              </div>
 
-                  {chosen && (
-                    <div className="flex items-center gap-1.5 text-xs font-medium">
-                      <CheckCircle2
-                        className={`w-4 h-4 ${
-                          isCorrect ? 'text-emerald-600' : 'text-amber-600'
-                        }`}
+              <div className="grid grid-cols-1 gap-2.5 sm:pl-11">
+                {q.options.map((opt, i) => (
+                  <AnswerOption
+                    key={opt}
+                    index={i}
+                    label={opt}
+                    state={
+                      chosen !== opt
+                        ? 'idle'
+                        : opt === q.correctAnswer
+                        ? 'right'
+                        : 'wrong'
+                    }
+                    faded={solved && opt !== q.correctAnswer}
+                    onClick={() =>
+                      setAnswers((prev) => ({ ...prev, [qIdx]: opt }))
+                    }
+                  />
+                ))}
+              </div>
+
+              <div className="sm:pl-11 space-y-3">
+                {chosen && (
+                  <div
+                    role="status"
+                    className={`flex items-center gap-3 px-4 py-2.5 border-2 rounded-[3px] ${
+                      solved
+                        ? 'bg-good/15 border-good'
+                        : 'bg-eraser/20 border-dashed border-ink/60'
+                    }`}
+                  >
+                    {solved ? (
+                      <Doodle
+                        name="tick"
+                        className="w-7 h-7 shrink-0 text-good"
+                        strokeWidth={5}
                       />
-                      <span
-                        className={
-                          isCorrect
-                            ? 'text-emerald-700 dark:text-emerald-300'
-                            : 'text-amber-700 dark:text-amber-300'
-                        }
-                      >
-                        {isCorrect
-                          ? POSITIVE_FEEDBACK[0]
-                          : TRY_AGAIN_FEEDBACK[0]}
-                      </span>
-                    </div>
-                  )}
+                    ) : (
+                      <RotateCcw className="w-5 h-5 shrink-0 text-ink" />
+                    )}
+                    <span
+                      className={`hand text-2xl font-bold ${
+                        solved ? 'text-good' : 'text-ink'
+                      }`}
+                    >
+                      {solved ? POSITIVE_FEEDBACK[0] : TRY_AGAIN_FEEDBACK[0]}
+                    </span>
+                  </div>
+                )}
 
+                {!solved && (
                   <button
                     type="button"
                     onClick={() =>
@@ -242,45 +286,65 @@ export const InteractiveStoriesView: React.FC<InteractiveStoriesViewProps> = ({
                         [qIdx]: !prev[qIdx],
                       }))
                     }
-                    className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-teal-700 dark:text-slate-400 dark:hover:text-teal-300"
+                    aria-expanded={!!showHints[qIdx]}
+                    className="btn btn-paper btn-sm"
                   >
-                    <HelpCircle className="w-3.5 h-3.5" />
-                    <span>Ver pista</span>
+                    <HelpCircle className="w-4 h-4" />
+                    <span>
+                      {showHints[qIdx] ? 'Esconder pista' : 'Preciso de uma pista'}
+                    </span>
                   </button>
+                )}
 
-                  {showHints[qIdx] && (
-                    <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-lg">
+                {showHints[qIdx] && !solved && (
+                  <div className="flex items-start gap-3 bg-pencil/30 border-2 border-ink rounded-[3px] px-4 py-3">
+                    <Lightbulb className="w-6 h-6 shrink-0 mt-0.5 text-ink" />
+                    <p className="text-lg text-ink">
+                      <span className="hand text-2xl font-bold mr-2">Pista:</span>
                       {q.hint}
                     </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Guided Retelling */}
-          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-3">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-4 h-4 text-teal-700 dark:text-teal-400" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100">
-                Reconto orientado
-              </h3>
+                  </div>
+                )}
+              </div>
             </div>
-            <ul className="list-disc list-inside text-xs text-slate-600 dark:text-slate-300 space-y-1">
-              {selectedStory.retellingPrompts.map((p, i) => (
-                <li key={i}>{p}</li>
-              ))}
-            </ul>
-            <textarea
-              rows={3}
-              value={retellNotes}
-              onChange={(e) => setRetellNotes(e.target.value)}
-              placeholder="Conta a história pelas tuas palavras ou regista ideias para o reconto oral..."
-              className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 p-3 text-xs sm:text-sm text-slate-900 dark:text-slate-100"
-            />
+          );
+        })}
+      </section>
+
+      {/* 4 — Retell */}
+      <section className="space-y-4">
+        <div className="border-b-[3px] border-pencil pb-2">
+          <div className="hand text-3xl font-bold text-ink">
+            Agora conta tu a história
           </div>
+          <p className="text-base text-ink-soft">Reconto orientado</p>
         </div>
-      </div>
+        <ul className="text-lg text-ink space-y-1.5">
+          {selectedStory.retellingPrompts.map((p, i) => (
+            <li key={i} className="flex gap-3">
+              <Doodle
+                name="arrow"
+                className="w-6 h-6 shrink-0 mt-0.5 text-pen"
+                strokeWidth={3}
+              />
+              <span>{p}</span>
+            </li>
+          ))}
+        </ul>
+        <div>
+          <label htmlFor="retell-notes" className="label-print block mb-1.5">
+            As tuas ideias
+          </label>
+          <textarea
+            id="retell-notes"
+            rows={4}
+            value={retellNotes}
+            onChange={(e) => setRetellNotes(e.target.value)}
+            placeholder="Conta a história pelas tuas palavras ou regista ideias para o reconto oral..."
+            className="ruled-paper block w-full rounded-[3px] border-2 border-ink bg-sheet text-ink px-4 py-0 text-xl font-medium placeholder:text-ink-soft/70 focus:outline-none focus:border-pen"
+          />
+        </div>
+      </section>
     </div>
   );
 };

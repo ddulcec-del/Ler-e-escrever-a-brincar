@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" fill="none">
+  <!-- Brand mark (PencilMark from src/components/Sketch.tsx) on a paper tile. -->
+  <rect x="1" y="1" width="38" height="38" rx="9" fill="#faf6ec" stroke="#23201c" stroke-width="1.6"/>
+  <g transform="translate(20 20) scale(0.92) translate(-20 -20) rotate(-45 20 20)" stroke="#23201c" stroke-width="1.6" stroke-linejoin="round">
+    <path d="M2 20l8-4.5v9z" fill="#ecd2ad"/>
+    <path d="M2 20l3.2-1.8v3.6z" fill="#23201c"/>
+    <rect x="10" y="15.5" width="20" height="9" fill="#f6c445"/>
+    <rect x="30" y="15.5" width="3.5" height="9" fill="#cfc8b8"/>
+    <path d="M33.5 15.5h3a2 2 0 012 2v5a2 2 0 01-2 2h-3z" fill="#f0958a"/>
+  </g>
+</svg>

@@ -71,7 +71,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
         <button
           type="button"
           onClick={() => window.print()}
-          className="no-print inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold transition-colors"
+          className="no-print inline-flex items-center gap-2 px-4 py-2.5 rounded-xs bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold transition-colors"
         >
           <Printer className="w-4 h-4" />
           <span>Imprimir Certificado</span>
@@ -80,7 +80,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
 
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div className="p-5 sheet bg-sheet border border-edge">
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
             Atividades realizadas
           </div>
@@ -92,7 +92,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div className="p-5 sheet bg-sheet border border-edge">
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
             Pontos de esforço
           </div>
@@ -104,7 +104,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div className="p-5 sheet bg-sheet border border-edge">
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
             Medalhas obtidas
           </div>
@@ -116,7 +116,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
           </div>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+        <div className="p-5 sheet bg-sheet border border-edge">
           <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
             Glossário pessoal
           </div>
@@ -132,7 +132,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
       {/* Monthly Evolution Chart & Competencies */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Evolution */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+        <div className="p-6 sheet bg-sheet border border-edge space-y-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
               Evolução ao longo dos meses
@@ -143,7 +143,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
           </div>
 
           <div className="pt-4">
-            <div className="grid grid-cols-6 gap-3 items-end h-44 border-b border-slate-200 dark:border-slate-800 pb-2">
+            <div className="grid grid-cols-6 gap-3 items-end h-44 border-b border-edge pb-2">
               {monthlyCounts.map((item) => {
                 const heightPct = Math.max(
                   10,
@@ -183,7 +183,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
         </div>
 
         {/* Competencies Worked */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+        <div className="p-6 sheet bg-sheet border border-edge space-y-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
               Competências trabalhadas
@@ -225,7 +225,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
       </div>
 
       {/* Medals & Badges */}
-      <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
+      <div className="p-6 sheet bg-sheet border border-edge space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -243,14 +243,14 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
             return (
               <div
                 key={medal.id}
-                className={`p-4 rounded-xl border flex items-start gap-3.5 transition-colors ${
+                className={`p-4 rounded-xs border flex items-start gap-3.5 transition-colors ${
                   earned
                     ? 'bg-amber-50/60 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800'
-                    : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-65'
+                    : 'bg-slate-50/70 dark:bg-slate-800/40 border-edge opacity-65'
                 }`}
               >
                 <div
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  className={`w-10 h-10 rounded-xs flex items-center justify-center shrink-0 ${
                     earned
                       ? 'bg-amber-500 text-white'
                       : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
@@ -276,7 +276,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
       </div>
 
       {/* Personal Glossary (Maio - Atividade 47) */}
-      <div className="no-print p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-5">
+      <div className="no-print p-6 sheet bg-sheet border border-edge space-y-5">
         <div className="flex items-center gap-2.5">
           <BookMarked className="w-5 h-5 text-teal-700 dark:text-teal-400" />
           <div>
@@ -298,14 +298,14 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
             value={newWord}
             onChange={(e) => setNewWord(e.target.value)}
             placeholder="Palavra nova (ex: explorar)"
-            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="rounded-xs border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
           <input
             type="text"
             value={newMeaning}
             onChange={(e) => setNewMeaning(e.target.value)}
             placeholder="O que significa?"
-            className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            className="rounded-xs border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
           <div className="flex gap-2">
             <input
@@ -313,11 +313,11 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
               value={newExample}
               onChange={(e) => setNewExample(e.target.value)}
               placeholder="Exemplo numa frase"
-              className="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="flex-1 rounded-xs border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 py-2 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
             <button
               type="submit"
-              className="inline-flex items-center gap-1 px-4 py-2 rounded-xl bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold shrink-0 transition-colors"
+              className="inline-flex items-center gap-1 px-4 py-2 rounded-xs bg-teal-700 hover:bg-teal-800 text-white text-sm font-semibold shrink-0 transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span>Guardar</span>
@@ -330,7 +330,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
             {student.personalGlossary.map((entry) => (
               <div
                 key={entry.id}
-                className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700"
+                className="p-3.5 rounded-xs bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700"
               >
                 <div className="font-bold text-teal-800 dark:text-teal-300 text-sm">
                   {entry.word}
@@ -350,7 +350,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
       </div>
 
       {/* Printable Digital Certificate */}
-      <div className="print-break-inside-avoid p-8 rounded-2xl bg-white dark:bg-slate-900 border-2 border-teal-600/40 dark:border-teal-500/40 text-center space-y-4">
+      <div className="print-break-inside-avoid p-8 sheet bg-sheet border-2 border-teal-600/40 dark:border-teal-500/40 text-center space-y-4">
         <div className="inline-flex items-center gap-2 text-xs font-semibold text-teal-700 dark:text-teal-400">
           <Compass className="w-4 h-4" />
           <span>Agrupamento de Escolas de Paço de Arcos · Educação Especial</span>
