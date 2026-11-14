@@ -52,6 +52,12 @@ export const TeacherLogin: React.FC = () => {
             onChange={(e) => setPassword(e.target.value)}
           />
         </Field>
+        {db.isDemoMode && (
+          <p className="text-sm text-ink-soft">
+            Modo de demonstração: utilizador <code>{db.DEMO_USERNAME}</code>,
+            palavra-passe <code>{db.DEMO_PASSWORD}</code>.
+          </p>
+        )}
         <ErrorText error={error} />
         <button type="submit" className="btn btn-pen" disabled={busy}>
           <LogIn className="w-4 h-4" />

@@ -15,7 +15,6 @@ import { StudentProgressView } from './components/StudentProgressView';
 import { TeacherArea } from './components/teacher/TeacherArea';
 import { COMPETENCIES, INTERVENTION_PROFILES } from './data/curriculumData';
 import * as db from './lib/db';
-import { isSupabaseConfigured } from './lib/supabase';
 import {
   AccessibilitySettings,
   ActivityResult,
@@ -75,28 +74,39 @@ function saveToStorage(key: string, value: unknown) {
 const errorMessage = (e: unknown) =>
   e instanceof Error ? e.message : String(e);
 
-export default function App() {
-  if (!isSupabaseConfigured) return <NotConfigured />;
-  return <PlatformApp />;
-}
-
-function NotConfigured() {
+/** Without Supabase, a strip at the top says the data stays in this browser. */
+function DemoBanner() {
   return (
-    <main className="min-h-screen bg-paper text-ink flex items-center justify-center p-6">
-      <div className="sketch max-w-lg p-6 space-y-3">
-        <h1 className="text-2xl font-extrabold">Falta ligar a base de dados</h1>
-        <p className="text-ink-soft">
-          Defina <code>NEXT_PUBLIC_SUPABASE_URL</code> e{' '}
-          <code>NEXT_PUBLIC_SUPABASE_KEY</code> (em <code>.env.local</code> ou
-          nos Secrets do GitHub) e volte a construir o site. Os passos estão no
-          README.
-        </p>
+    <div className="no-print border-b-[1.6px] border-ink bg-pencil/40 px-4 sm:px-6 py-2 text-sm text-ink">
+      <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <span>
+          <strong>Modo de demonstração local</strong>: o Supabase não está
+          ligado, por isso os dados ficam só neste navegador. Área da
+          Professora: utilizador <code>{db.DEMO_USERNAME}</code>, palavra-passe{' '}
+          <code>{db.DEMO_PASSWORD}</code>.
+        </span>
+        <button
+          type="button"
+          className="font-semibold underline underline-offset-4"
+          onClick={() => {
+            if (
+              window.confirm(
+                'Apagar os dados de demonstração deste navegador e recomeçar?'
+              )
+            ) {
+              db.resetDemo();
+              window.location.reload();
+            }
+          }}
+        >
+          Recomeçar demonstração
+        </button>
       </div>
-    </main>
+    </div>
   );
 }
 
-function PlatformApp() {
+export default function App() {
   const [activeSection, setActiveSection] = useState<NavSectionId>('inicio');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -198,15 +208,24 @@ function PlatformApp() {
     };
   }, [activeStudentId, studentDataVersion]);
 
+  // The teacher area is a separate workspace: no student menu, no reading
+  // aids, and the students' accessibility choices don't apply to it.
+  const onTeacher = activeSection === 'professora';
+
   useEffect(() => {
     saveToStorage(STORAGE_KEYS.ACCESSIBILITY, accessibility);
+  }, [accessibility]);
+
+  useEffect(() => {
     document.documentElement.classList.toggle(
       'dark',
-      accessibility.theme === 'dark'
+      !onTeacher && accessibility.theme === 'dark'
     );
     // Tailwind sizes are in rem, so scaling the root font size scales the whole UI.
-    document.documentElement.style.fontSize = ROOT_FONT_SIZES[accessibility.fontSize];
-  }, [accessibility]);
+    document.documentElement.style.fontSize = onTeacher
+      ? ROOT_FONT_SIZES.normal
+      : ROOT_FONT_SIZES[accessibility.fontSize];
+  }, [accessibility, onTeacher]);
 
   const handleNavSelect = (id: NavSectionId) => {
     // Leaving the teacher area: pick up whatever she changed.
@@ -285,8 +304,8 @@ function PlatformApp() {
   const points = computePoints(studentResults);
   const medalCount = computeMedals(studentResults).length;
 
-  const fontClass = `font-access-${accessibility.fontFamily}`;
-  const spacingClass = `spacing-${accessibility.spacing}`;
+  const fontClass = `font-access-${onTeacher ? 'default' : accessibility.fontFamily}`;
+  const spacingClass = `spacing-${onTeacher ? 'normal' : accessibility.spacing}`;
 
   const isMonthSection = (id: NavSectionId): id is MonthId =>
     ['janeiro', 'fevereiro', 'marco', 'abril', 'maio', 'junho'].includes(id);
@@ -320,21 +339,23 @@ function PlatformApp() {
         <header className="no-print sticky top-0 z-30 bg-paper/95 backdrop-blur-xs border-b-[1.6px] border-ink px-4 sm:px-6 py-3">
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                aria-label="Abrir menu de navegação"
-                aria-expanded={mobileMenuOpen}
-                className={`p-2 border-[1.6px] border-ink text-ink bg-sheet rounded-xs ${
-                  onLanding ? '' : 'lg:hidden'
-                }`}
-              >
-                {mobileMenuOpen ? (
-                  <X className="w-5 h-5" />
-                ) : (
-                  <Menu className="w-5 h-5" />
-                )}
-              </button>
+              {!onTeacher && (
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                  aria-label="Abrir menu de navegação"
+                  aria-expanded={mobileMenuOpen}
+                  className={`p-2 border-[1.6px] border-ink text-ink bg-sheet rounded-xs ${
+                    onLanding ? '' : 'lg:hidden'
+                  }`}
+                >
+                  {mobileMenuOpen ? (
+                    <X className="w-5 h-5" />
+                  ) : (
+                    <Menu className="w-5 h-5" />
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => handleNavSelect('inicio')}
@@ -347,6 +368,9 @@ function PlatformApp() {
               </button>
             </div>
 
+            {onTeacher ? (
+              <span className="hidden md:block label-print">Área da Professora</span>
+            ) : (
             <nav
               aria-label="Navegação rápida"
               className="hidden md:flex items-center gap-7 text-sm font-semibold"
@@ -364,6 +388,7 @@ function PlatformApp() {
                 O meu progresso
               </button>
             </nav>
+            )}
 
             <div className="flex items-center gap-3 shrink-0">
               <button
@@ -386,12 +411,16 @@ function PlatformApp() {
           </div>
         </header>
 
-        <AccessibilityBar
-          settings={accessibility}
-          onChange={(updated) =>
-            setAccessibility((prev) => ({ ...prev, ...updated }))
-          }
-        />
+        {db.isDemoMode && <DemoBanner />}
+
+        {!onTeacher && (
+          <AccessibilityBar
+            settings={accessibility}
+            onChange={(updated) =>
+              setAccessibility((prev) => ({ ...prev, ...updated }))
+            }
+          />
+        )}
 
         {notice && (
           <div
@@ -424,7 +453,7 @@ function PlatformApp() {
         )}
 
         {/* Drawer navigation (small screens, and the landing page) */}
-        {mobileMenuOpen && (
+        {mobileMenuOpen && !onTeacher && (
           <div
             className={`no-print fixed inset-0 z-40 bg-[#151310]/60 backdrop-blur-xs ${
               onLanding ? '' : 'lg:hidden'
@@ -465,6 +494,13 @@ function PlatformApp() {
               onNavigate={handleNavSelect}
             />
           </main>
+        ) : onTeacher ? (
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8">
+            <TeacherArea
+              audioEnabled={accessibility.audioEnabled}
+              highlightKeywords={accessibility.highlightKeywords}
+            />
+          </main>
         ) : (
           <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 flex gap-10">
             {/* Sidebar */}
@@ -473,8 +509,7 @@ function PlatformApp() {
               className="no-print hidden lg:block w-72 shrink-0"
             >
               <div className="quiet-scroll sticky top-24 space-y-6 max-h-[calc(100vh-6.5rem)] overflow-y-auto overscroll-contain px-1 pt-1 pb-12">
-                {activeSection !== 'professora' &&
-                  (activeStudent ? (
+                {activeStudent ? (
                     <div className="sketch px-4 pt-3 pb-4">
                       <div className="flex items-baseline justify-between gap-2">
                         <span className="label-print">Aluno(a) ativo(a)</span>
@@ -560,14 +595,14 @@ function PlatformApp() {
                         Escolher perfil
                       </button>
                     </div>
-                  ))}
+                  )}
 
                 <SideNav active={activeSection} onSelect={handleNavSelect} />
               </div>
             </aside>
 
             <main className="flex-1 min-w-0">
-          {loading && activeSection !== 'professora' && (
+          {loading && (
             <p className="hand text-3xl text-ink-soft">A carregar…</p>
           )}
 
@@ -801,16 +836,7 @@ function PlatformApp() {
               priorityCompetencies={priorityCompetencies}
               onAddGlossaryEntry={handleAddGlossaryEntry}
             />
-          )}
-
-          {/* 13. ÁREA DA PROFESSORA */}
-          {activeSection === 'professora' && (
-            <TeacherArea
-              audioEnabled={accessibility.audioEnabled}
-              highlightKeywords={accessibility.highlightKeywords}
-            />
-          )}
-            </main>
+          )}            </main>
           </div>
         )}
 
