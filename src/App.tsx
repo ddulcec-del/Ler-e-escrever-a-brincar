@@ -1,14 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import {
-  Menu,
-  Play,
-  UserCheck,
-  X,
-} from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Menu, Play, UserCheck, X } from 'lucide-react';
 import { AccessibilityBar } from './components/AccessibilityBar';
 import { Landing } from './components/Landing';
+import { ProfilePicker } from './components/ProfilePicker';
 import { SideNav } from './components/SideNav';
 import { Doodle, PencilMark, SketchDefs } from './components/Sketch';
 import { InteractiveActivityModal } from './components/InteractiveActivityModal';
@@ -16,13 +12,10 @@ import { InteractiveStoriesView } from './components/InteractiveStoriesView';
 import { MonthlyModuleView } from './components/MonthlyModuleView';
 import { ResourceLibraryView } from './components/ResourceLibraryView';
 import { StudentProgressView } from './components/StudentProgressView';
-import { TeacherArea } from './components/TeacherArea';
-import {
-  COMPETENCIES,
-  INTERVENTION_PROFILES,
-  MONTHLY_MODULES,
-  PEDAGOGICAL_ACTIVITIES,
-} from './data/curriculumData';
+import { TeacherArea } from './components/teacher/TeacherArea';
+import { COMPETENCIES, INTERVENTION_PROFILES } from './data/curriculumData';
+import * as db from './lib/db';
+import { isSupabaseConfigured } from './lib/supabase';
 import {
   AccessibilitySettings,
   ActivityResult,
@@ -30,49 +23,20 @@ import {
   DifficultyLevel,
   GlossaryEntry,
   IndividualPlan,
-  InitialAssessment,
   MonthId,
   NavSectionId,
   PedagogicalActivity,
-  SessionRecord,
   StudentProfile,
 } from './types/pedagogical';
 import { speakPt } from './utils/speech';
 import { monthName } from './utils/months';
+import { computeMedals, computePoints } from './utils/progress';
 
+// Only per-device preferences live in the browser; everything else is in
+// Supabase.
 const STORAGE_KEYS = {
-  STUDENTS: 'leb_students_v1',
-  ACTIVE_STUDENT: 'leb_active_student_v1',
-  RESULTS: 'leb_results_v1',
-  ASSESSMENTS: 'leb_assessments_v1',
-  PLANS: 'leb_plans_v1',
-  SESSIONS: 'leb_sessions_v1',
+  ACTIVE_STUDENT: 'leb_active_student_v2',
   ACCESSIBILITY: 'leb_accessibility_v1',
-  GREETED: 'leb_greeted_v1',
-};
-
-const DEFAULT_STUDENT: StudentProfile = {
-  id: 'student-tiago',
-  name: 'Tiago',
-  age: 8,
-  schoolYear: '2.º ano',
-  profile: 'perfil3',
-  priorityCompetencies: INTERVENTION_PROFILES.perfil3.defaultCompetencies,
-  startDate: '2026-01-12',
-  observations:
-    'Gosta de histórias sobre animais e beneficia de leitura modelada e instruções segmentadas.',
-  difficultyLevel: 1,
-  points: 20,
-  earnedMedals: ['primeira-estrela'],
-  personalGlossary: [
-    {
-      id: 'gl-1',
-      word: 'estratégia',
-      meaning: 'Plano ou caminho que escolhemos para resolver um desafio.',
-      example: 'Usei a estratégia de sublinhar as palavras-chave.',
-      dateAdded: '2026-01-15',
-    },
-  ],
 };
 
 const DEFAULT_ACCESSIBILITY: AccessibilitySettings = {
@@ -100,41 +64,69 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   }
 }
 
+function saveToStorage(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Private mode or storage disabled: the preference just isn't kept.
+  }
+}
+
+const errorMessage = (e: unknown) =>
+  e instanceof Error ? e.message : String(e);
+
 export default function App() {
+  if (!isSupabaseConfigured) return <NotConfigured />;
+  return <PlatformApp />;
+}
+
+function NotConfigured() {
+  return (
+    <main className="min-h-screen bg-paper text-ink flex items-center justify-center p-6">
+      <div className="sketch max-w-lg p-6 space-y-3">
+        <h1 className="text-2xl font-extrabold">Falta ligar a base de dados</h1>
+        <p className="text-ink-soft">
+          Defina <code>NEXT_PUBLIC_SUPABASE_URL</code> e{' '}
+          <code>NEXT_PUBLIC_SUPABASE_KEY</code> (em <code>.env.local</code> ou
+          nos Secrets do GitHub) e volte a construir o site. Os passos estão no
+          README.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+function PlatformApp() {
   const [activeSection, setActiveSection] = useState<NavSectionId>('inicio');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const [students, setStudents] = useState<StudentProfile[]>(() =>
-    loadFromStorage(STORAGE_KEYS.STUDENTS, [DEFAULT_STUDENT])
+  // Shared data (Supabase)
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [activities, setActivities] = useState<PedagogicalActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadedOnce, setLoadedOnce] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  // The student using this device
+  const [activeStudentId, setActiveStudentId] = useState<string | null>(() =>
+    loadFromStorage<string | null>(STORAGE_KEYS.ACTIVE_STUDENT, null)
   );
-  const [activeStudentId, setActiveStudentId] = useState<string>(() =>
-    loadFromStorage(STORAGE_KEYS.ACTIVE_STUDENT, DEFAULT_STUDENT.id)
-  );
-  const [results, setResults] = useState<ActivityResult[]>(() =>
-    loadFromStorage(STORAGE_KEYS.RESULTS, [])
-  );
-  const [assessments, setAssessments] = useState<
-    Record<string, InitialAssessment>
-  >(() => loadFromStorage(STORAGE_KEYS.ASSESSMENTS, {}));
-  const [plans, setPlans] = useState<Record<string, IndividualPlan>>(() =>
-    loadFromStorage(STORAGE_KEYS.PLANS, {})
-  );
-  const [sessions, setSessions] = useState<SessionRecord[]>(() =>
-    loadFromStorage(STORAGE_KEYS.SESSIONS, [])
-  );
+  const [plan, setPlan] = useState<IndividualPlan | null>(null);
+  const [studentResults, setStudentResults] = useState<ActivityResult[]>([]);
+  const [glossary, setGlossary] = useState<GlossaryEntry[]>([]);
+  // Bumped to reload the active student's data (e.g. after the teacher edits).
+  const [studentDataVersion, setStudentDataVersion] = useState(0);
+
   const [accessibility, setAccessibility] = useState<AccessibilitySettings>(
     () => loadFromStorage(STORAGE_KEYS.ACCESSIBILITY, DEFAULT_ACCESSIBILITY)
   );
-  const [hasGreeted, setHasGreeted] = useState<boolean>(() =>
-    loadFromStorage(STORAGE_KEYS.GREETED, false)
-  );
-  const [welcomeNameInput, setWelcomeNameInput] = useState('');
 
-  // Active Interactive Activity Modal
   const [runningActivity, setRunningActivity] =
     useState<PedagogicalActivity | null>(null);
+  // Activity chosen before a profile was picked: asks "Quem vai jogar?" first.
+  const [pendingActivity, setPendingActivity] =
+    useState<PedagogicalActivity | null>(null);
 
-  // Games filter state
   const [gameCompetencyFilter, setGameCompetencyFilter] = useState<
     CompetencyId | 'Todas'
   >('Todas');
@@ -142,36 +134,72 @@ export default function App() {
     DifficultyLevel | 'Todos'
   >('Todos');
 
-  const activeStudent =
-    students.find((s) => s.id === activeStudentId) || students[0];
+  const activeStudent = students.find((s) => s.id === activeStudentId);
 
-  // Persist to localStorage
+  const loadShared = useCallback(async () => {
+    try {
+      const [s, a] = await Promise.all([
+        db.listStudents(),
+        db.listActivities(),
+      ]);
+      setStudents(s);
+      setActivities(a);
+      setLoadedOnce(true);
+      setNotice(null);
+    } catch (e) {
+      setNotice(`Não foi possível carregar os dados: ${errorMessage(e)}`);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.STUDENTS, JSON.stringify(students));
-  }, [students]);
+    loadShared();
+  }, [loadShared]);
+
+  // A profile deleted by the teacher is forgotten on this device (only after
+  // a successful load, so a network error doesn't log the student out).
   useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEYS.ACTIVE_STUDENT,
-      JSON.stringify(activeStudentId)
-    );
+    if (loadedOnce && activeStudentId && !activeStudent) {
+      setActiveStudentId(null);
+    }
+  }, [loadedOnce, activeStudentId, activeStudent]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.ACTIVE_STUDENT, activeStudentId);
   }, [activeStudentId]);
+
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.RESULTS, JSON.stringify(results));
-  }, [results]);
+    if (!activeStudentId) {
+      setPlan(null);
+      setStudentResults([]);
+      setGlossary([]);
+      return;
+    }
+    let cancelled = false;
+    Promise.all([
+      db.getPlan(activeStudentId),
+      db.listResults(activeStudentId),
+      db.listGlossary(activeStudentId),
+    ])
+      .then(([p, r, g]) => {
+        if (cancelled) return;
+        setPlan(p);
+        setStudentResults(r);
+        setGlossary(g);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setNotice(`Não foi possível carregar o teu progresso: ${errorMessage(e)}`);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeStudentId, studentDataVersion]);
+
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.ASSESSMENTS, JSON.stringify(assessments));
-  }, [assessments]);
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.PLANS, JSON.stringify(plans));
-  }, [plans]);
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
-  }, [sessions]);
-  useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEYS.ACCESSIBILITY,
-      JSON.stringify(accessibility)
-    );
+    saveToStorage(STORAGE_KEYS.ACCESSIBILITY, accessibility);
     document.documentElement.classList.toggle(
       'dark',
       accessibility.theme === 'dark'
@@ -179,136 +207,83 @@ export default function App() {
     // Tailwind sizes are in rem, so scaling the root font size scales the whole UI.
     document.documentElement.style.fontSize = ROOT_FONT_SIZES[accessibility.fontSize];
   }, [accessibility]);
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.GREETED, JSON.stringify(hasGreeted));
-  }, [hasGreeted]);
 
   const handleNavSelect = (id: NavSectionId) => {
+    // Leaving the teacher area: pick up whatever she changed.
+    if (activeSection === 'professora' && id !== 'professora') {
+      loadShared();
+      setStudentDataVersion((v) => v + 1);
+    }
     setActiveSection(id);
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleWelcomeSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = welcomeNameInput.trim();
-    if (!trimmed) return;
-
-    const existing = students.find(
-      (s) => s.name.toLowerCase() === trimmed.toLowerCase()
-    );
-    if (existing) {
-      setActiveStudentId(existing.id);
-    } else {
-      const newStudent: StudentProfile = {
-        ...DEFAULT_STUDENT,
-        id: `student-${Date.now()}`,
-        name: trimmed,
-        points: 0,
-        earnedMedals: [],
-        personalGlossary: [],
-      };
-      setStudents((prev) => [...prev, newStudent]);
-      setActiveStudentId(newStudent.id);
-    }
-    setHasGreeted(true);
+  const greet = (name: string) => {
     if (accessibility.audioEnabled) {
       speakPt(
-        `Olá, ${trimmed}! Estás preparado para descobrir, aprender e brincar com as palavras?`
+        `Olá, ${name}! Estás preparado para descobrir, aprender e brincar com as palavras?`
       );
     }
   };
 
-  const handleActivityComplete = (
+  const handlePickStudent = (id: string) => {
+    setActiveStudentId(id);
+    const picked = students.find((s) => s.id === id);
+    if (picked) greet(picked.name);
+    if (pendingActivity) {
+      setRunningActivity(pendingActivity);
+      setPendingActivity(null);
+    }
+  };
+
+  const launchActivity = (act: PedagogicalActivity) => {
+    if (activeStudent) setRunningActivity(act);
+    else setPendingActivity(act);
+  };
+
+  const handleActivityComplete = async (
     res: Omit<ActivityResult, 'id' | 'date'>
   ) => {
-    const newResult: ActivityResult = {
-      ...res,
-      id: `res-${Date.now()}`,
-      date: new Date().toISOString(),
-    };
-    const updatedResults = [newResult, ...results];
-    setResults(updatedResults);
-
-    // Update student points & unlock medals based on effort and consistency
-    const studentRes = updatedResults.filter(
-      (r) => r.studentId === res.studentId
-    );
-    setStudents((prev) =>
-      prev.map((s) => {
-        if (s.id !== res.studentId) return s;
-        const medals = new Set(s.earnedMedals);
-        if (studentRes.length >= 1) medals.add('primeira-estrela');
-        if (studentRes.length >= 3) medals.add('explorador-palavras');
-        if (
-          studentRes.some(
-            (r) =>
-              r.competency === 'compreensao_textos' ||
-              r.competency === 'compreensao_instrucoes'
-          )
-        ) {
-          medals.add('detetive-atento');
-        }
-        if (
-          studentRes.some((r) => r.competency === 'organizacao_discurso')
-        ) {
-          medals.add('contador-historias');
-        }
-        if (studentRes.some((r) => r.competency === 'producao_escrita')) {
-          medals.add('escritor-criativo');
-        }
-        if (studentRes.some((r) => r.autonomyDegree === 'Autónomo')) {
-          medals.add('aprendiz-autonomo');
-        }
-        return {
-          ...s,
-          points: s.points + 20,
-          earnedMedals: Array.from(medals),
-        };
-      })
-    );
+    try {
+      const saved = await db.addResult(res);
+      setStudentResults((prev) => [saved, ...prev]);
+    } catch (e) {
+      setNotice(`O resultado não foi guardado: ${errorMessage(e)}`);
+    }
   };
 
-  const handleAddGlossaryEntry = (
-    entry: Omit<GlossaryEntry, 'id' | 'dateAdded'>
+  const handleAddGlossaryEntry = async (
+    entry: Pick<GlossaryEntry, 'word' | 'meaning' | 'example'>
   ) => {
     if (!activeStudent) return;
-    const newEntry: GlossaryEntry = {
-      ...entry,
-      id: `gl-${Date.now()}`,
-      dateAdded: new Date().toISOString().split('T')[0],
-    };
-    setStudents((prev) =>
-      prev.map((s) =>
-        s.id === activeStudent.id
-          ? { ...s, personalGlossary: [newEntry, ...s.personalGlossary] }
-          : s
-      )
-    );
-  };
-
-  const handleClearAllLocalData = () => {
-    if (
-      !window.confirm(
-        'Apagar TODOS os dados guardados neste dispositivo (alunos, resultados, avaliações, planos e sessões)? Esta ação não pode ser desfeita.'
-      )
-    ) {
-      return;
+    try {
+      const saved = await db.addGlossaryEntry({
+        ...entry,
+        studentId: activeStudent.id,
+      });
+      setGlossary((prev) => [saved, ...prev]);
+    } catch (e) {
+      setNotice(`A palavra não foi guardada: ${errorMessage(e)}`);
     }
-    Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
-    setAccessibility(DEFAULT_ACCESSIBILITY);
-    setStudents([DEFAULT_STUDENT]);
-    setActiveStudentId(DEFAULT_STUDENT.id);
-    setResults([]);
-    setAssessments({});
-    setPlans({});
-    setSessions([]);
-    setHasGreeted(false);
   };
 
-  const studentResults = results.filter(
-    (r) => r.studentId === activeStudent?.id
-  );
+  // What the plan decides for this student (with sensible defaults).
+  const priorityCompetencies: CompetencyId[] =
+    plan?.priorityCompetencies ??
+    (activeStudent
+      ? INTERVENTION_PROFILES[activeStudent.profile].defaultCompetencies
+      : []);
+  const studentLevel: DifficultyLevel = plan?.difficultyLevel ?? 1;
+  const planActivities: PedagogicalActivity[] = plan?.activityIds.length
+    ? plan.activityIds
+        .map((id) => activities.find((a) => a.id === id))
+        .filter((a): a is PedagogicalActivity => Boolean(a))
+    : activities.filter((a) => priorityCompetencies.includes(a.competency));
+  const usesTeacherSelection = Boolean(plan?.activityIds.length);
+
+  const points = computePoints(studentResults);
+  const medalCount = computeMedals(studentResults).length;
 
   const fontClass = `font-access-${accessibility.fontFamily}`;
   const spacingClass = `spacing-${accessibility.spacing}`;
@@ -324,6 +299,17 @@ export default function App() {
     }`;
 
   const onLanding = activeSection === 'inicio';
+
+  const pickerPanel = (title?: string) => (
+    <div className="sheet bg-sheet border border-edge p-6 max-w-2xl">
+      <ProfilePicker
+        students={students}
+        loading={loading}
+        onPick={handlePickStudent}
+        title={title}
+      />
+    </div>
+  );
 
   return (
     <div className={`min-h-screen flex flex-col ${fontClass} ${spacingClass}`}>
@@ -407,6 +393,36 @@ export default function App() {
           }
         />
 
+        {notice && (
+          <div
+            role="alert"
+            className="no-print border-b-[1.6px] border-ink bg-eraser/30 px-4 sm:px-6 py-2.5 text-sm text-ink"
+          >
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+              <span>{notice}</span>
+              <span className="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    loadShared();
+                    setStudentDataVersion((v) => v + 1);
+                  }}
+                  className="font-semibold underline underline-offset-4"
+                >
+                  Tentar de novo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNotice(null)}
+                  aria-label="Fechar aviso"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Drawer navigation (small screens, and the landing page) */}
         {mobileMenuOpen && (
           <div
@@ -438,23 +454,14 @@ export default function App() {
         {onLanding ? (
           <main className="flex-1">
             <Landing
-              hasGreeted={hasGreeted}
               activeStudent={activeStudent}
               students={students}
+              studentsLoading={loading}
               studentResults={studentResults}
               audioEnabled={accessibility.audioEnabled}
-              nameInput={welcomeNameInput}
-              onNameInputChange={setWelcomeNameInput}
-              onNameSubmit={handleWelcomeSubmit}
-              onPickStudent={(id) => {
-                setActiveStudentId(id);
-                setHasGreeted(true);
-              }}
-              onSpeakWelcome={() =>
-                speakPt(
-                  `Olá, ${activeStudent?.name}! Estás preparado para descobrir, aprender e brincar com as palavras?`
-                )
-              }
+              onPickStudent={handlePickStudent}
+              onChangeStudent={() => setActiveStudentId(null)}
+              onSpeakWelcome={() => activeStudent && greet(activeStudent.name)}
               onNavigate={handleNavSelect}
             />
           </main>
@@ -466,81 +473,107 @@ export default function App() {
               className="no-print hidden lg:block w-72 shrink-0"
             >
               <div className="quiet-scroll sticky top-24 space-y-6 max-h-[calc(100vh-6.5rem)] overflow-y-auto overscroll-contain px-1 pt-1 pb-12">
-                {activeStudent && (
-                  <div className="sketch px-4 pt-3 pb-4">
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="label-print">Aluno(a) ativo(a)</span>
-                      <span className="text-sm font-semibold text-ink-soft">
-                        {activeStudent.schoolYear}
-                      </span>
-                    </div>
-                    <div className="hand text-4xl font-bold text-pen leading-none mt-1.5">
-                      {activeStudent.name}
-                    </div>
+                {activeSection !== 'professora' &&
+                  (activeStudent ? (
+                    <div className="sketch px-4 pt-3 pb-4">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="label-print">Aluno(a) ativo(a)</span>
+                        <span className="text-sm font-semibold text-ink-soft">
+                          {activeStudent.schoolYear}
+                        </span>
+                      </div>
+                      <div className="hand text-4xl font-bold text-pen leading-none mt-1.5">
+                        {activeStudent.name}
+                      </div>
 
-                    <div className="grid grid-cols-2 gap-2.5 mt-3.5">
-                      {/* Points */}
-                      <div className="border-2 border-ink rounded-[2px] bg-pencil text-[#23201c] px-2.5 pt-1.5 pb-2 -rotate-1">
-                        <div className="text-[0.68rem] font-bold uppercase tracking-[0.09em]">
-                          Pontos
+                      <div className="grid grid-cols-2 gap-2.5 mt-3.5">
+                        {/* Points */}
+                        <div className="border-2 border-ink rounded-[2px] bg-pencil text-[#23201c] px-2.5 pt-1.5 pb-2 -rotate-1">
+                          <div className="text-[0.68rem] font-bold uppercase tracking-[0.09em]">
+                            Pontos
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <Doodle
+                              name="star"
+                              strokeWidth={3.2}
+                              className="w-7 h-7 shrink-0 fill-[#fffdf8]"
+                            />
+                            <span className="hand text-4xl font-bold leading-none tabular-nums">
+                              {points}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <Doodle
-                            name="star"
-                            strokeWidth={3.2}
-                            className="w-7 h-7 shrink-0 fill-[#fffdf8]"
-                          />
-                          <span className="hand text-4xl font-bold leading-none tabular-nums">
-                            {activeStudent.points}
-                          </span>
+
+                        {/* Level, drawn as three steps */}
+                        <div className="border-2 border-ink rounded-[2px] bg-sheet text-ink px-2.5 pt-1.5 pb-2 rotate-1">
+                          <div className="label-print">Nível</div>
+                          <div className="flex items-end gap-2 mt-0.5">
+                            <span className="hand text-4xl font-bold leading-none text-pen">
+                              {studentLevel}
+                            </span>
+                            <span
+                              className="flex items-end gap-1 pb-0.5"
+                              aria-hidden="true"
+                            >
+                              {[1, 2, 3].map((step) => (
+                                <span
+                                  key={step}
+                                  className={`w-3 border-2 border-ink rounded-[1px] ${
+                                    step <= studentLevel
+                                      ? 'bg-pen'
+                                      : 'bg-transparent'
+                                  }`}
+                                  style={{ height: `${0.45 + step * 0.4}rem` }}
+                                />
+                              ))}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Level, drawn as three steps */}
-                      <div className="border-2 border-ink rounded-[2px] bg-sheet text-ink px-2.5 pt-1.5 pb-2 rotate-1">
-                        <div className="label-print">Nível</div>
-                        <div className="flex items-end gap-2 mt-0.5">
-                          <span className="hand text-4xl font-bold leading-none text-pen">
-                            {activeStudent.difficultyLevel}
-                          </span>
-                          <span
-                            className="flex items-end gap-1 pb-0.5"
-                            aria-hidden="true"
-                          >
-                            {[1, 2, 3].map((step) => (
-                              <span
-                                key={step}
-                                className={`w-3 border-2 border-ink rounded-[1px] ${
-                                  step <= activeStudent.difficultyLevel
-                                    ? 'bg-pen'
-                                    : 'bg-transparent'
-                                }`}
-                                style={{ height: `${0.45 + step * 0.4}rem` }}
-                              />
-                            ))}
-                          </span>
+                      {medalCount > 0 && (
+                        <div className="flex items-center gap-1.5 mt-3 text-sm font-semibold text-ink">
+                          <Doodle name="medal" className="w-5 h-5 text-mark" strokeWidth={3} />
+                          {medalCount} {medalCount === 1 ? 'medalha' : 'medalhas'}
                         </div>
-                      </div>
-                    </div>
+                      )}
 
-                    {activeStudent.earnedMedals.length > 0 && (
-                      <div className="flex items-center gap-1.5 mt-3 text-sm font-semibold text-ink">
-                        <Doodle name="medal" className="w-5 h-5 text-mark" strokeWidth={3} />
-                        {activeStudent.earnedMedals.length}{' '}
-                        {activeStudent.earnedMedals.length === 1
-                          ? 'medalha'
-                          : 'medalhas'}
-                      </div>
-                    )}
-                  </div>
-                )}
+                      <button
+                        type="button"
+                        onClick={() => setActiveStudentId(null)}
+                        className="mt-3 text-xs font-semibold text-ink-soft underline underline-offset-4 hover:text-ink"
+                      >
+                        Mudar de aluno
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="sketch px-4 pt-3 pb-4 space-y-2">
+                      <span className="label-print">Aluno(a)</span>
+                      <p className="text-sm text-ink-soft">
+                        Ainda não escolheste o teu perfil.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleNavSelect('inicio')}
+                        className="btn btn-pen btn-sm"
+                      >
+                        Escolher perfil
+                      </button>
+                    </div>
+                  ))}
 
                 <SideNav active={activeSection} onSelect={handleNavSelect} />
               </div>
             </aside>
 
             <main className="flex-1 min-w-0">
+          {loading && activeSection !== 'professora' && (
+            <p className="hand text-3xl text-ink-soft">A carregar…</p>
+          )}
+
           {/* 2. O MEU PERCURSO */}
+          {activeSection === 'percurso' && !loading && !activeStudent &&
+            pickerPanel('Quem és tu? Escolhe o teu perfil para veres o teu percurso.')}
           {activeSection === 'percurso' && activeStudent && (
             <div className="space-y-8">
               <div className="flex flex-wrap items-end justify-between gap-4">
@@ -552,85 +585,93 @@ export default function App() {
                     O meu percurso — {activeStudent.name}
                   </h1>
                   <p className="text-base text-ink-soft mt-3">
-                    Atividades selecionadas para as tuas competências
-                    prioritárias (Nível {activeStudent.difficultyLevel}).
+                    {usesTeacherSelection
+                      ? `Atividades escolhidas pela tua professora para ti (Nível ${studentLevel}).`
+                      : `Atividades selecionadas para as tuas competências prioritárias (Nível ${studentLevel}).`}
                   </p>
                 </div>
 
                 <div className="flex items-center gap-2 text-sm font-semibold text-ink border-b-2 border-pencil pb-1">
                   <UserCheck className="w-4 h-4" />
                   <span>
-                    {activeStudent.priorityCompetencies.length} competências
-                    prioritárias
+                    {usesTeacherSelection
+                      ? `${planActivities.filter((a) => studentResults.some((r) => r.activityId === a.id)).length} de ${planActivities.length} concluídas`
+                      : `${priorityCompetencies.length} competências prioritárias`}
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {PEDAGOGICAL_ACTIVITIES.filter((act) =>
-                  activeStudent.priorityCompetencies.includes(act.competency)
-                ).map((act) => {
-                  const comp = COMPETENCIES.find(
-                    (c) => c.id === act.competency
-                  );
-                  const isDone = studentResults.some(
-                    (r) => r.activityId === act.id
-                  );
-                  return (
-                    <div
-                      key={act.id}
-                      className="sheet p-6 bg-sheet border border-edge flex flex-col justify-between gap-5"
-                    >
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="label-print">
-                            {monthName(act.month)} · {comp?.shortLabel}
-                          </span>
-                          {isDone && (
-                            <span className="inline-flex items-center gap-1 text-mark hand text-2xl font-bold -rotate-3">
-                              <Doodle name="tick" className="w-5 h-5" strokeWidth={3.4} />
-                              <span>Concluída</span>
+              {planActivities.length === 0 ? (
+                <p className="text-base text-ink-soft">
+                  Ainda não há atividades no teu percurso. Explora os jogos e
+                  desafios!
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {planActivities.map((act) => {
+                    const comp = COMPETENCIES.find(
+                      (c) => c.id === act.competency
+                    );
+                    const isDone = studentResults.some(
+                      (r) => r.activityId === act.id
+                    );
+                    return (
+                      <div
+                        key={act.id}
+                        className="sheet p-6 bg-sheet border border-edge flex flex-col justify-between gap-5"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="label-print">
+                              {monthName(act.month)} · {comp?.shortLabel}
                             </span>
-                          )}
+                            {isDone && (
+                              <span className="inline-flex items-center gap-1 text-mark hand text-2xl font-bold -rotate-3">
+                                <Doodle name="tick" className="w-5 h-5" strokeWidth={3.4} />
+                                <span>Concluída</span>
+                              </span>
+                            )}
+                          </div>
+                          <h2 className="text-xl font-bold text-ink">
+                            {act.gameTitle || act.title}
+                          </h2>
+                          <p className="text-sm text-ink-soft">
+                            {act.pedagogicalObjective}
+                          </p>
                         </div>
-                        <h2 className="text-xl font-bold text-ink">
-                          {act.gameTitle || act.title}
-                        </h2>
-                        <p className="text-sm text-ink-soft">
-                          {act.pedagogicalObjective}
-                        </p>
-                      </div>
 
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => setRunningActivity(act)}
-                          className="btn btn-pen btn-sm"
-                        >
-                          <Play className="w-4 h-4" />
-                          <span>Praticar agora</span>
-                        </button>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => launchActivity(act)}
+                            className="btn btn-pen btn-sm"
+                          >
+                            <Play className="w-4 h-4" />
+                            <span>Praticar agora</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
           {/* 3–8. MONTHLY MODULES (Janeiro a Junho) */}
-          {isMonthSection(activeSection) && (
+          {isMonthSection(activeSection) && !loading && (
             <MonthlyModuleView
               monthId={activeSection}
+              activities={activities}
               audioEnabled={accessibility.audioEnabled}
               results={studentResults}
-              onLaunchActivity={(act) => setRunningActivity(act)}
+              onLaunchActivity={launchActivity}
               onNavigateMonth={(mId) => handleNavSelect(mId)}
             />
           )}
 
           {/* 9. JOGOS E DESAFIOS */}
-          {activeSection === 'jogos' && (
+          {activeSection === 'jogos' && !loading && (
             <div className="space-y-8">
               <div>
                 <h1 className="text-3xl sm:text-4xl font-extrabold text-ink">
@@ -691,7 +732,7 @@ export default function App() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {PEDAGOGICAL_ACTIVITIES.filter(
+                {activities.filter(
                   (a) =>
                     gameCompetencyFilter === 'Todas' ||
                     a.competency === gameCompetencyFilter
@@ -719,7 +760,7 @@ export default function App() {
                       <div>
                         <button
                           type="button"
-                          onClick={() => setRunningActivity(act)}
+                          onClick={() => launchActivity(act)}
                           className="btn btn-pencil btn-sm"
                         >
                           <Play className="w-4 h-4" />
@@ -742,17 +783,22 @@ export default function App() {
           )}
 
           {/* 11. BIBLIOTECA DE RECURSOS */}
-          {activeSection === 'biblioteca' && (
+          {activeSection === 'biblioteca' && !loading && (
             <ResourceLibraryView
-              onLaunchActivity={(act) => setRunningActivity(act)}
+              activities={activities}
+              onLaunchActivity={launchActivity}
             />
           )}
 
           {/* 12. O MEU PROGRESSO */}
+          {activeSection === 'progresso' && !loading && !activeStudent &&
+            pickerPanel('Quem és tu? Escolhe o teu perfil para veres o teu progresso.')}
           {activeSection === 'progresso' && activeStudent && (
             <StudentProgressView
               student={activeStudent}
               results={studentResults}
+              glossary={glossary}
+              priorityCompetencies={priorityCompetencies}
               onAddGlossaryEntry={handleAddGlossaryEntry}
             />
           )}
@@ -760,62 +806,8 @@ export default function App() {
           {/* 13. ÁREA DA PROFESSORA */}
           {activeSection === 'professora' && (
             <TeacherArea
-              students={students}
-              activeStudentId={activeStudentId}
-              onSelectStudent={(id) => setActiveStudentId(id)}
-              onCreateStudent={(data) => {
-                const created: StudentProfile = {
-                  ...data,
-                  id: `student-${Date.now()}`,
-                  points: 0,
-                  earnedMedals: [],
-                  personalGlossary: [],
-                };
-                setStudents((prev) => [...prev, created]);
-                setActiveStudentId(created.id);
-              }}
-              onUpdateStudent={(updated) =>
-                setStudents((prev) =>
-                  prev.map((s) => (s.id === updated.id ? updated : s))
-                )
-              }
-              onDeleteStudent={(id) => {
-                const target = students.find((s) => s.id === id);
-                const remaining = students.filter((s) => s.id !== id);
-                if (!target || remaining.length === 0) return;
-                if (
-                  !window.confirm(
-                    `Remover o perfil de ${target.name} e todos os seus registos? Esta ação não pode ser desfeita.`
-                  )
-                ) {
-                  return;
-                }
-                setStudents(remaining);
-                setResults((prev) => prev.filter((r) => r.studentId !== id));
-                setAssessments(({ [id]: _a, ...rest }) => rest);
-                setPlans(({ [id]: _p, ...rest }) => rest);
-                setSessions((prev) => prev.filter((x) => x.studentId !== id));
-                if (activeStudentId === id) {
-                  setActiveStudentId(remaining[0].id);
-                }
-              }}
-              results={results}
-              assessments={assessments}
-              onSaveAssessment={(a) =>
-                setAssessments((prev) => ({ ...prev, [a.studentId]: a }))
-              }
-              plans={plans}
-              onSavePlan={(p) =>
-                setPlans((prev) => ({ ...prev, [p.studentId]: p }))
-              }
-              sessions={sessions}
-              onAddSession={(s) =>
-                setSessions((prev) => [
-                  { ...s, id: `sess-${Date.now()}` },
-                  ...prev,
-                ])
-              }
-              onClearAllLocalData={handleClearAllLocalData}
+              audioEnabled={accessibility.audioEnabled}
+              highlightKeywords={accessibility.highlightKeywords}
             />
           )}
             </main>
@@ -840,14 +832,51 @@ export default function App() {
         </footer>
       </div>
 
+      {/* "Quem vai jogar?" — an activity was chosen before picking a profile */}
+      {pendingActivity && (
+        <div
+          className="no-print fixed inset-0 z-50 bg-[#151310]/60 backdrop-blur-xs flex items-center justify-center p-4"
+          onClick={() => setPendingActivity(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Escolher perfil"
+            className="sketch bg-paper w-full max-w-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <p className="text-base text-ink-soft">
+                Vais jogar{' '}
+                <strong className="text-ink">
+                  {pendingActivity.gameTitle || pendingActivity.title}
+                </strong>
+                .
+              </p>
+              <button
+                type="button"
+                onClick={() => setPendingActivity(null)}
+                aria-label="Fechar"
+                className="p-1 text-ink"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <ProfilePicker
+              students={students}
+              onPick={handlePickStudent}
+              title="Quem vai jogar?"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Interactive Activity Modal */}
       {runningActivity && activeStudent && (
         <InteractiveActivityModal
           activity={runningActivity}
           initialLevel={
-            gameLevelFilter !== 'Todos'
-              ? gameLevelFilter
-              : activeStudent.difficultyLevel
+            gameLevelFilter !== 'Todos' ? gameLevelFilter : studentLevel
           }
           audioEnabled={accessibility.audioEnabled}
           highlightKeywords={accessibility.highlightKeywords}

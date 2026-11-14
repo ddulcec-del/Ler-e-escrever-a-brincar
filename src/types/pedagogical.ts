@@ -47,25 +47,24 @@ export interface CompetencyInfo {
 
 export interface GlossaryEntry {
   id: string;
+  studentId: string;
   word: string;
   meaning: string;
   example: string;
   dateAdded: string;
 }
 
+export type SchoolYear = '1.º ano' | '2.º ano' | '3.º ano' | '4.º ano';
+
+/** Identity of a student. What they work on lives in their IndividualPlan. */
 export interface StudentProfile {
   id: string;
   name: string;
   age: number;
-  schoolYear: '1.º ano' | '2.º ano' | '3.º ano' | '4.º ano';
+  schoolYear: SchoolYear;
   profile: InterventionProfile;
-  priorityCompetencies: CompetencyId[];
   startDate: string;
   observations: string;
-  difficultyLevel: DifficultyLevel;
-  points: number;
-  earnedMedals: string[];
-  personalGlossary: GlossaryEntry[];
 }
 
 export interface ActivityResult {
@@ -90,32 +89,53 @@ export type AssessmentRating = 'Emergente' | 'Em desenvolvimento' | 'Consolidado
 export interface InitialAssessment {
   studentId: string;
   date: string;
-  ratings: Record<CompetencyId, AssessmentRating>;
-  qualitativeNotes: string;
+  ratings: Partial<Record<CompetencyId, AssessmentRating>>;
+  notes: string;
 }
 
+/**
+ * The individual plan drives what the student sees: their level, their
+ * priority competencies and the activities listed in "O meu percurso".
+ */
 export interface IndividualPlan {
   studentId: string;
-  selectedMonths: MonthId[];
-  priorityObjectives: string[];
-  selectedActivityIds: string[];
+  priorityCompetencies: CompetencyId[];
   difficultyLevel: DifficultyLevel;
+  activityIds: string[];
+  objectives: string[];
   frequency: string;
   strategies: string;
   notes: string;
 }
 
+export type SupportLevel =
+  | 'Apoio total'
+  | 'Apoio moderado'
+  | 'Apoio mínimo'
+  | 'Autónomo';
+export type SessionAutonomy = 'Inicial' | 'Progressiva' | 'Consolidada';
+
+/** Lesson summary (sumário) written by the teacher after each session. */
 export interface SessionRecord {
   id: string;
-  date: string;
   studentId: string;
+  date: string;
+  activityIds: string[];
+  otherActivities: string;
   competencies: CompetencyId[];
-  activitiesDone: string[];
-  resultsSummary: string;
-  supportLevel: 'Apoio total' | 'Apoio moderado' | 'Apoio mínimo' | 'Autónomo';
-  autonomyDegree: 'Inicial' | 'Progressiva' | 'Consolidada';
+  summary: string;
+  supportLevel: SupportLevel;
+  autonomyDegree: SessionAutonomy;
   teacherNotes: string;
-  nextSessionPriorities: string;
+  nextPriorities: string;
+}
+
+/** The teacher's own text for the end-of-year report. */
+export interface FinalReport {
+  studentId: string;
+  strategies: string;
+  continuity: string;
+  updatedAt?: string;
 }
 
 export interface AccessibilitySettings {
@@ -180,6 +200,9 @@ export interface PedagogicalActivity {
   demonstrationExample: string;
   type: ExerciseType;
   levels: Record<DifficultyLevel, ExerciseQuestion[]>;
+  /** Hidden activities are kept for the teacher but not shown to students. */
+  published?: boolean;
+  sortOrder?: number;
 }
 
 export interface MonthlyModule {

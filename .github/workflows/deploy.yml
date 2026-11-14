@@ -31,6 +31,9 @@ jobs:
         env:
           # e.g. /Ler-e-escrever-a-brincar — read by next.config.ts
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          # Repository secrets (Settings → Secrets and variables → Actions)
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out

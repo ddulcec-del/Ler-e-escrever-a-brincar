@@ -1,10 +1,6 @@
 import React from 'react';
 import { ArrowLeft, ArrowRight, Play, Volume2 } from 'lucide-react';
-import {
-  COMPETENCIES,
-  MONTHLY_MODULES,
-  PEDAGOGICAL_ACTIVITIES,
-} from '../data/curriculumData';
+import { COMPETENCIES, MONTHLY_MODULES } from '../data/curriculumData';
 import {
   ActivityResult,
   MonthId,
@@ -15,6 +11,7 @@ import { Doodle } from './Sketch';
 
 interface MonthlyModuleViewProps {
   monthId: MonthId;
+  activities: PedagogicalActivity[];
   audioEnabled: boolean;
   results: ActivityResult[];
   onLaunchActivity: (activity: PedagogicalActivity) => void;
@@ -23,6 +20,7 @@ interface MonthlyModuleViewProps {
 
 export const MonthlyModuleView: React.FC<MonthlyModuleViewProps> = ({
   monthId,
+  activities,
   audioEnabled,
   results,
   onLaunchActivity,
@@ -30,7 +28,7 @@ export const MonthlyModuleView: React.FC<MonthlyModuleViewProps> = ({
 }) => {
   const module =
     MONTHLY_MODULES.find((m) => m.id === monthId) || MONTHLY_MODULES[0];
-  const monthActivities = PEDAGOGICAL_ACTIVITIES.filter(
+  const monthActivities = activities.filter(
     (a) => a.month === module.id
   );
   const completedIds = new Set(results.map((r) => r.activityId));

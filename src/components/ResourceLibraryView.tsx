@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Play, Printer } from 'lucide-react';
 import {
   COMPETENCIES,
-  PEDAGOGICAL_ACTIVITIES,
   RESOURCE_CATEGORIES,
   RESOURCE_LIBRARY,
 } from '../data/curriculumData';
@@ -19,10 +18,12 @@ const categoryColor = (cat: ResourceCategory) =>
   TAB_COLORS[RESOURCE_CATEGORIES.indexOf(cat) % TAB_COLORS.length];
 
 interface ResourceLibraryViewProps {
+  activities: PedagogicalActivity[];
   onLaunchActivity: (activity: PedagogicalActivity) => void;
 }
 
 export const ResourceLibraryView: React.FC<ResourceLibraryViewProps> = ({
+  activities,
   onLaunchActivity,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<
@@ -201,7 +202,8 @@ export const ResourceLibraryView: React.FC<ResourceLibraryViewProps> = ({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-x-7 gap-y-9">
         {filteredResources.map((res) => {
           const comp = COMPETENCIES.find((c) => c.id === res.competency);
-          const linkedAct = PEDAGOGICAL_ACTIVITIES.find(
+          // Missing when the teacher has hidden or deleted that activity.
+          const linkedAct = activities.find(
             (a) => a.id === res.linkedActivityId
           );
           return (

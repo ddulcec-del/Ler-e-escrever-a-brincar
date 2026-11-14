@@ -277,6 +277,38 @@
     background: #cf3f2e;
   }
 
+  /* Plain form controls for the teacher area */
+  .field {
+    width: 100%;
+    border: 1.6px solid var(--color-ink);
+    border-radius: 2px;
+    background: var(--color-sheet);
+    color: var(--color-ink);
+    padding: 0.5rem 0.7rem;
+    font-size: 0.95rem;
+    line-height: 1.35;
+  }
+  .field:focus {
+    outline: 2px solid var(--color-pen);
+    outline-offset: 1px;
+  }
+  .field-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-ink);
+    margin-bottom: 0.3rem;
+  }
+  .btn-danger {
+    background: var(--color-mark);
+    color: #fffdf8;
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+  }
+
   /* Double ruling used for handwriting practice (linhas de caligrafia) */
   .ruled-input {
     background: linear-gradient(var(--color-rule), var(--color-rule)) no-repeat 0 0.3rem / 100% 1.2px;

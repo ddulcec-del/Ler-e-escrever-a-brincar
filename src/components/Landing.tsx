@@ -6,18 +6,17 @@ import {
   NavSectionId,
   StudentProfile,
 } from '../types/pedagogical';
+import { ProfilePicker } from './ProfilePicker';
 import { Doodle, PencilSheet, Scribble } from './Sketch';
 
 interface LandingProps {
-  hasGreeted: boolean;
   activeStudent?: StudentProfile;
   students: StudentProfile[];
+  studentsLoading: boolean;
   studentResults: ActivityResult[];
   audioEnabled: boolean;
-  nameInput: string;
-  onNameInputChange: (value: string) => void;
-  onNameSubmit: (e: React.FormEvent) => void;
   onPickStudent: (id: string) => void;
+  onChangeStudent: () => void;
   onSpeakWelcome: () => void;
   onNavigate: (id: NavSectionId) => void;
 }
@@ -85,15 +84,13 @@ const EXPLORE: {
 ];
 
 export const Landing: React.FC<LandingProps> = ({
-  hasGreeted,
   activeStudent,
   students,
+  studentsLoading,
   studentResults,
   audioEnabled,
-  nameInput,
-  onNameInputChange,
-  onNameSubmit,
   onPickStudent,
+  onChangeStudent,
   onSpeakWelcome,
   onNavigate,
 }) => {
@@ -119,72 +116,16 @@ export const Landing: React.FC<LandingProps> = ({
               </h1>
             </div>
 
-            {!hasGreeted ? (
+            {!activeStudent ? (
               <div className="space-y-5 max-w-xl">
                 <p className="text-lg sm:text-xl text-ink-soft">
                   Olá! Bem-vindo(a) ao Ler e Escrever a Brincar!
                 </p>
-
-                {/* Name form, drawn as the label on a school notebook */}
-                <form
-                  onSubmit={onNameSubmit}
-                  className="sketch sketch-shade p-5 sm:p-6 space-y-4"
-                >
-                  <div className="flex items-center justify-between gap-4 label-print">
-                    <span>Etiqueta do caderno</span>
-                    <Doodle name="star" className="w-5 h-5 text-pencil" strokeWidth={3} />
-                  </div>
-                  <label
-                    htmlFor="welcome-name"
-                    className="font-display block text-2xl sm:text-3xl font-bold tracking-tight"
-                  >
-                    Como te chamas?
-                  </label>
-                  <div className="flex flex-wrap items-end gap-x-4 gap-y-4">
-                    <div className="flex flex-1 min-w-56 items-end gap-3">
-                      <span className="hand text-3xl font-bold text-ink" aria-hidden="true">
-                        Nome:
-                      </span>
-                      <input
-                        id="welcome-name"
-                        type="text"
-                        required
-                        autoComplete="off"
-                        value={nameInput}
-                        onChange={(e) => onNameInputChange(e.target.value)}
-                        placeholder="Escreve o teu nome..."
-                        className="ruled-input flex-1 w-full"
-                      />
-                    </div>
-                    <button type="submit" className="btn btn-pen">
-                      Começar
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <p className="text-sm text-ink-soft">
-                    Escreve o teu nome para começarmos a tua aventura de
-                    leitura, escrita e descoberta das palavras.
-                  </p>
-                </form>
-
-                {students.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink-soft">
-                    <span>Ou seleciona um perfil existente:</span>
-                    {students.map((s) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => onPickStudent(s.id)}
-                        className="hand text-2xl font-bold text-pen underline decoration-wavy decoration-1 underline-offset-4 hover:decoration-2"
-                      >
-                        {s.name}{' '}
-                        <span className="text-lg font-medium text-ink-soft">
-                          ({s.schoolYear})
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <ProfilePicker
+                  students={students}
+                  loading={studentsLoading}
+                  onPick={onPickStudent}
+                />
               </div>
             ) : (
               <div className="space-y-6 max-w-xl">
@@ -228,6 +169,13 @@ export const Landing: React.FC<LandingProps> = ({
                     </button>
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={onChangeStudent}
+                  className="text-sm font-semibold text-ink-soft underline underline-offset-4 hover:text-ink"
+                >
+                  Não és {activeStudent.name}? Mudar de aluno
+                </button>
               </div>
             )}
           </div>

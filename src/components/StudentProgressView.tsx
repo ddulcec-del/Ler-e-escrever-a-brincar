@@ -15,27 +15,37 @@ import {
 } from '../data/curriculumData';
 import {
   ActivityResult,
+  CompetencyId,
   GlossaryEntry,
   StudentProfile,
 } from '../types/pedagogical';
+import { computeMedals, computePoints } from '../utils/progress';
 
 interface StudentProgressViewProps {
   student: StudentProfile;
   results: ActivityResult[];
-  onAddGlossaryEntry: (entry: Omit<GlossaryEntry, 'id' | 'dateAdded'>) => void;
+  glossary: GlossaryEntry[];
+  priorityCompetencies: CompetencyId[];
+  onAddGlossaryEntry: (
+    entry: Pick<GlossaryEntry, 'word' | 'meaning' | 'example'>
+  ) => void;
 }
 
 export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
   student,
   results,
+  glossary,
+  priorityCompetencies,
   onAddGlossaryEntry,
 }) => {
   const [newWord, setNewWord] = useState('');
   const [newMeaning, setNewMeaning] = useState('');
   const [newExample, setNewExample] = useState('');
 
-  const studentLevel = Math.floor(student.points / 60) + 1;
-  const levelProgress = student.points % 60;
+  const points = computePoints(results);
+  const medals = computeMedals(results);
+  const studentLevel = Math.floor(points / 60) + 1;
+  const levelProgress = points % 60;
 
   const monthlyCounts = MONTHLY_MODULES.map((m) => ({
     month: m.name,
@@ -97,7 +107,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
             Pontos de esforço
           </div>
           <div className="text-3xl font-bold text-slate-900 dark:text-slate-100 tabular-nums mt-1">
-            {student.points}
+            {points}
           </div>
           <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Nível {studentLevel} ({levelProgress}/60 pts)
@@ -109,7 +119,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
             Medalhas obtidas
           </div>
           <div className="text-3xl font-bold text-amber-600 dark:text-amber-400 tabular-nums mt-1">
-            {student.earnedMedals.length} / {MEDALS_CATALOG.length}
+            {medals.length} / {MEDALS_CATALOG.length}
           </div>
           <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Conquistas desbloqueadas
@@ -121,7 +131,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
             Glossário pessoal
           </div>
           <div className="text-3xl font-bold text-sky-700 dark:text-sky-400 tabular-nums mt-1">
-            {student.personalGlossary.length}
+            {glossary.length}
           </div>
           <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Palavras guardadas
@@ -195,7 +205,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
 
           <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
             {COMPETENCIES.filter((c) =>
-              student.priorityCompetencies.includes(c.id)
+              priorityCompetencies.includes(c.id)
             ).map((comp) => {
               const compResults = results.filter(
                 (r) => r.competency === comp.id
@@ -239,7 +249,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {MEDALS_CATALOG.map((medal) => {
-            const earned = student.earnedMedals.includes(medal.id);
+            const earned = medals.includes(medal.id);
             return (
               <div
                 key={medal.id}
@@ -325,9 +335,9 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
           </div>
         </form>
 
-        {student.personalGlossary.length > 0 && (
+        {glossary.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            {student.personalGlossary.map((entry) => (
+            {glossary.map((entry) => (
               <div
                 key={entry.id}
                 className="p-3.5 rounded-xs bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700"
@@ -362,7 +372,7 @@ export const StudentProgressView: React.FC<StudentProgressViewProps> = ({
           Certifica-se que <strong className="text-slate-900 dark:text-white">{student.name}</strong> ({student.schoolYear}) participou com empenho, persistência e autonomia nas atividades da plataforma{' '}
           <strong>Ler e Escrever a Brincar</strong>, tendo concluído{' '}
           <strong>{results.length}</strong> atividade(s) e conquistado{' '}
-          <strong>{student.earnedMedals.length}</strong> medalha(s).
+          <strong>{medals.length}</strong> medalha(s).
         </p>
         <div className="pt-4 flex flex-wrap items-center justify-center gap-8 text-xs text-slate-500 dark:text-slate-400">
           <div>
