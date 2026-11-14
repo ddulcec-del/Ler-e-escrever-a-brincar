@@ -21,6 +21,7 @@ Não há servidor nem contas — nada é enviado para a internet.
 
 ```
 src/
+  app/                    entrada Next.js (layout, página e estilos globais)
   App.tsx                 navegação, estado global e persistência
   components/             vistas (módulos mensais, histórias, progresso, área da professora…)
   data/                   conteúdos pedagógicos (atividades, histórias, recursos)
@@ -31,13 +32,15 @@ docs/                     especificação original do projeto
 
 ## Desenvolvimento
 
-Requer [Node.js](https://nodejs.org) 20 ou superior.
+O site é feito com [Next.js](https://nextjs.org) (exportação estática) e
+requer [Node.js](https://nodejs.org) 20.9 ou superior.
 
 ```bash
 npm install
 npm run dev      # http://localhost:3000
 npm run lint     # verificação de tipos
-npm run build    # gera o site pronto na pasta dist/
+npm run build    # gera o site pronto na pasta out/
+npm run preview  # serve a pasta out/ em http://localhost:3000
 ```
 
 ## Publicação
