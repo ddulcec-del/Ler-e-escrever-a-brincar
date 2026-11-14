@@ -30,8 +30,13 @@ o aluno escolhido nesse dispositivo.
 ## Configurar o Supabase (uma vez)
 
 1. Criar uma conta e um projeto novo em [supabase.com](https://supabase.com).
-2. **SQL Editor** → *New query* → colar o conteúdo de [`supabase/schema.sql`](supabase/schema.sql) → *Run*.
-   Cria as tabelas e as regras de acesso.
+2. Criar as tabelas e as regras de acesso com a [Supabase CLI](https://supabase.com/docs/guides/cli):
+   ```bash
+   supabase login
+   supabase link --project-ref <id-do-projeto>
+   supabase db push
+   ```
+   (Em alternativa: **SQL Editor** → colar o ficheiro de `supabase/migrations/` → *Run*.)
 3. **Authentication → Users → Add user → Create new user**: criar a conta da professora.
    - E-mail: `<utilizador>@example.com` — por exemplo `dulce@example.com` para entrar
      com o utilizador `dulce` (também se pode entrar escrevendo o e-mail completo).
@@ -56,7 +61,7 @@ src/
   data/seedActivities.ts  exercícios originais, usados só para "Importar"
   lib/                    ligação ao Supabase e todas as leituras/escritas (db.ts)
   types/pedagogical.ts    tipos partilhados
-supabase/schema.sql       tabelas e regras de acesso
+supabase/migrations/      tabelas e regras de acesso (supabase db push)
 docs/                     especificação original do projeto
 ```
 

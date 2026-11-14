@@ -1,6 +1,6 @@
 -- Ler e Escrever a Brincar — esquema da base de dados (Supabase / Postgres)
 --
--- Colar este ficheiro inteiro no SQL Editor do Supabase e carregar em "Run".
+-- Aplicado com `supabase db push` (ou colado no SQL Editor do Supabase).
 -- Pode ser corrido mais do que uma vez: não apaga dados existentes.
 --
 -- Quem pode fazer o quê (Row Level Security):
